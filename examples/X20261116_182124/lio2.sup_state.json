@@ -1,0 +1,1 @@
+{"status": "ENDED", "end_reason": "STOP_REQUESTED", "child": {"pid": 18346, "pgid": 18346, "start": 69825}, "leftovers": [], "peak": {"temp": 76.875, "avail_min": 3724, "rss_mb": 198.93359375}, "module": "lio2", "supervisor_pid": 18345, "wall": 1794821225.3264153}

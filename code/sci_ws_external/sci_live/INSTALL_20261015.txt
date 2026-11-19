@@ -1,0 +1,28 @@
+sci_ws 설치 기록 2026-10-15 17:42:10
+원본: /home/unitree/jsh_onboard_robot_20261001 → /home/unitree/sci_ws/external/sci_live, /home/unitree/kci_event_handoff_20261009 → /home/unitree/sci_ws/external/sci_event, /home/unitree/pantilt_calib/configs/pantilt_calib_multi_20260928.json → /home/unitree/sci_ws/external/sci_event/configs/
+얹은 파일(md5):
+c8b6e07971fea22b33d853615d0f5267  sci_event/code/aim_console.py
+7147ed92a53ab3fe3329eeb4429bb0e8  sci_event/code/calib_console.py
+efc4777a232c073798c47f9e0d1507ca  sci_live/field_tools/record_chapter.sh
+779d74023b277664b33b03a7d3c1943e  sci_live/floor_id/maps/kci_maps_perfloor/1F/maps/base_map.png
+b861ecf94db95f5ab6acc2a750c9606b  sci_live/floor_id/maps/kci_maps_perfloor/1F/maps/door_mask.png
+94879855d33cb8d724550cf72b4b4716  sci_live/floor_id/maps/kci_maps_perfloor/2F/maps/base_map.png
+8c6c851a4043fcc3871d5b9344a6b5a3  sci_live/floor_id/maps/kci_maps_perfloor/2F/maps/door_mask.png
+7ca26387047d38cb5035e89d19d986f1  sci_live/floor_id/maps/kci_maps_perfloor/3F/maps/base_map.png
+35fb1d1de2829b9927645af38b678e3d  sci_live/floor_id/maps/kci_maps_perfloor/3F/maps/door_mask.png
+0bae16a9bb6716dc807383bc41b416a3  sci_live/floor_id/maps/kci_maps_perfloor/4F/maps/base_map.png
+35249ff6a38b99a62f92abc7c65860a7  sci_live/floor_id/maps/kci_maps_perfloor/4F/maps/door_mask.png
+b27b80f6c2d58f62c39e873d970352de  sci_live/floor_id/maps/kci_maps_perfloor/5F/maps/base_map.png
+ea542ae8dcdf06a52ca687285ab107de  sci_live/floor_id/maps/kci_maps_perfloor/5F/maps/door_mask.png
+0b16cc1eedb55c2e3e7cc6481adaaf6e  sci_live/floor_id/maps/kci_maps_perfloor/6F/maps/base_map.png
+e3ee189ac788ab1f18c3838d5362df28  sci_live/floor_id/maps/kci_maps_perfloor/6F/maps/door_mask.png
+45a7d493b600f203c6d775db14c8dd15  sci_live/floor_id/maps/kci_maps_perfloor/7F/maps/base_map.png
+95e8c43e6ab199f762883cf04daffdf7  sci_live/floor_id/maps/kci_maps_perfloor/7F/maps/door_mask.png
+a8c26cdbe284cffbf07838a5fd8708b7  sci_live/floor_id/maps/kci_maps_perfloor/8F/maps/base_map.png
+df7860a19ffc8ce2fad52c09de63e7f3  sci_live/floor_id/maps/kci_maps_perfloor/8F/maps/door_mask.png
+bd47f93fffec2125c5d12398a4bc8c4f  sci_live/floor_id/maps/kci_maps_perfloor/9F/maps/base_map.png
+383d76af0c4acad96efd9465c7710213  sci_live/floor_id/maps/kci_maps_perfloor/9F/maps/door_mask.png
+47cf454bac36ee15594703a75fd274d4  sci_live/realtime/loc_worker.py
+2f920918e7ebabd7d571a83946b9ede0  sci_live/realtime/rt_live_node.py
+b4ae82663c2ef8095f52f8b261855bb8  sci_live/realtime/tools/live_viewer.py
+8b40fd36daa966c94dbd331e4c98bbb9  sci_live/realtime/tools/sensors_go2.sh

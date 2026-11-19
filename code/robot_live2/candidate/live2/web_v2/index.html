@@ -1,0 +1,1721 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LIVE-FIELD2 운용</title>
+<style>
+:root{
+  --bg:#0e1115;--s1:#151a20;--s2:#1c222a;--s3:#242b35;--line:#2c3440;--fg:#e9edf2;--mut:#9aa4b1;--dim:#6c7684;
+  --live:#2fbf74;--live-bg:#123b27;--warn:#e7a43b;--warn-bg:#3d2c10;--bad:#e5564e;--bad-bg:#43191a;
+  --info:#5b9cf0;--info-bg:#15283f;--hist:#b69cf5;--hist-bg:#271f3b;--neu:#8a95a3;--neu-bg:#232a33;
+  --r:10px;--tap:46px;
+}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,"Noto Sans KR","Apple SD Gothic Neo",sans-serif;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button,select,input{font:inherit;color:inherit}
+button{min-height:var(--tap);padding:0 18px;border-radius:9px;border:1px solid var(--line);background:var(--s3);cursor:pointer;font-weight:650;letter-spacing:.01em}
+button:hover:not(:disabled){filter:brightness(1.12)}button:disabled{opacity:.38;cursor:not-allowed}
+button.primary{background:var(--live);border-color:var(--live);color:#06210f}
+button.danger{background:var(--bad-bg);border-color:var(--bad);color:#ffd9d7}
+button.ghost{background:transparent}
+button.sm{min-height:36px;padding:0 12px;font-size:13px}
+select,input[type=text],input[type=password]{min-height:var(--tap);background:var(--s1);border:1px solid var(--line);border-radius:9px;padding:0 12px}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--info);outline-offset:1px}
+.mut{color:var(--mut)}.dim{color:var(--dim)}.small{font-size:13px}.mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+.hide{display:none!important}
+
+/* ---------- header / tabs */
+.stick{position:sticky;top:0;z-index:20}
+.top{display:flex;align-items:center;gap:10px;padding:8px 16px;background:#0b0e12;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-weight:800;letter-spacing:.02em;margin-right:4px}
+.pill{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:16px;font-weight:650;font-size:13.5px;background:var(--neu-bg);color:var(--fg);border:1px solid transparent;white-space:nowrap}
+.pill i{width:8px;height:8px;border-radius:50%;background:currentColor;display:inline-block}
+.p-live{background:var(--live-bg);color:#8ff0bd}.p-warn{background:var(--warn-bg);color:#ffd28a}.p-bad{background:var(--bad-bg);color:#ffb3ae}
+.p-info{background:var(--info-bg);color:#a9cbff}.p-neu{background:var(--neu-bg);color:#c3cbd5}.p-hist{background:var(--hist-bg);color:#d8c9ff;border:1px dashed #6f5ab0}
+.spacer{flex:1}
+.usr{position:relative}.usr>button{min-height:36px}
+.menu{position:absolute;right:0;top:42px;background:var(--s2);border:1px solid var(--line);border-radius:10px;padding:6px;min-width:220px;display:none;box-shadow:0 10px 30px #0008}
+.menu.open{display:block}.menu button{width:100%;text-align:left;background:transparent;border:0;min-height:42px}
+.tabs{display:flex;gap:4px;padding:6px 16px 0;background:var(--bg);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabs button{white-space:nowrap;flex:none;min-height:44px;border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;color:var(--mut);padding:0 16px}
+.tabs button.on{color:var(--fg);border-bottom-color:var(--info)}
+main{padding:12px 16px 24px}
+.tab{display:none}.tab.on{display:block}
+
+/* ---------- cards */
+.card{background:var(--s1);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;min-width:0}
+.card h3{margin:0 0 8px;font-size:14px;color:var(--mut);font-weight:650;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+.card h3 .r{margin-left:auto}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:14px}.kv>div:nth-child(odd){color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{text-align:left;padding:6px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--mut);font-weight:600}
+details{border:1px solid var(--line);border-radius:9px;padding:6px 10px;background:var(--s1);margin-top:10px}
+details>summary{cursor:pointer;min-height:36px;display:flex;align-items:center;color:var(--mut);font-weight:650}
+.note{border-left:3px solid var(--info);background:var(--info-bg);padding:8px 12px;border-radius:6px;font-size:14px}
+.note.warn{border-color:var(--warn);background:var(--warn-bg)}.note.bad{border-color:var(--bad);background:var(--bad-bg)}
+.empty{display:flex;align-items:center;justify-content:center;gap:10px;min-height:120px;border:1px dashed var(--line);border-radius:10px;color:var(--mut);text-align:center;padding:16px;font-size:14px}
+
+/* ---------- run tab: idle */
+.prep{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:14px}
+.checks{display:grid;gap:8px;margin:4px 0 12px}
+.chk{display:flex;align-items:center;gap:12px;background:var(--s2);border-radius:9px;padding:9px 12px}
+.chk b{font-size:15px}.chk .st{margin-left:auto;font-weight:700;font-size:13.5px}
+.ico{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;flex:none}
+.ok .ico{background:var(--live-bg);color:#8ff0bd}.no .ico{background:var(--bad-bg);color:#ffb3ae}.wait .ico{background:var(--warn-bg);color:#ffd28a}
+.opts{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 12px}
+.switch{display:inline-flex;align-items:center;gap:10px;min-height:var(--tap);padding:0 14px;background:var(--s2);border-radius:9px;cursor:pointer;user-select:none}
+.switch input{width:22px;height:22px}
+.go{width:100%;min-height:68px;font-size:21px;border-radius:12px}
+.why{margin-top:8px;font-size:14px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.step{background:var(--s2);border-radius:10px;padding:10px 12px;border:1px solid transparent}
+.step .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--s3);font-weight:800;margin-right:6px}
+.step b{font-size:15px}.step p{margin:6px 0 0;font-size:13.5px;color:var(--mut)}
+.step.now{border-color:var(--info);background:var(--info-bg)}.step.done .n{background:var(--live);color:#06210f}
+
+/* ---------- run tab: live */
+.ctlbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.ctlbar .grow{flex:1}
+.stepper{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.stepper span{white-space:nowrap;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:18px;background:var(--s2);color:var(--mut);font-weight:650;font-size:13.5px}
+.stepper span.now{background:var(--info-bg);color:#cfe1ff;outline:1px solid var(--info)}.stepper span.done{color:#8ff0bd}
+.livegrid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:12px}
+.media{position:relative;background:#000;border-radius:9px;overflow:hidden;aspect-ratio:16/9;max-height:calc(100vh - 250px);margin:0 auto;width:100%}
+.media img,.media canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.media .badge{position:absolute;left:10px;top:10px;z-index:3}
+.media .tools{position:absolute;right:8px;top:8px;display:flex;gap:6px;z-index:3}
+.media .veil{position:absolute;inset:0;display:grid;place-items:center;background:#000a;color:#ffd28a;font-weight:700;font-size:16px;text-align:center;padding:20px}
+.seg{display:inline-flex;background:var(--s2);border-radius:9px;padding:3px}
+.seg button{min-height:38px;border:0;background:transparent;color:var(--mut)}.seg button.on{background:var(--s3);color:var(--fg)}
+.side{display:grid;gap:12px;align-content:start}
+.mapbox{position:relative;height:clamp(150px,calc(100vh - 560px),320px);background:#fff;border-radius:8px;overflow:hidden}
+.mapbox canvas,.mapbox img{width:100%;height:100%;object-fit:contain;display:block}
+.big{font-size:22px;font-weight:800}
+.hyp{display:grid;grid-template-columns:34px minmax(60px,1fr) auto auto auto;gap:5px 10px;font-size:14px;align-items:center}
+.hyp .fl{font-weight:800;font-size:16px}.hyp .cap{grid-column:1/-1;font-size:12px;color:var(--dim)}
+.bar{height:6px;background:var(--s3);border-radius:3px;overflow:hidden}.bar i{display:block;height:100%;background:var(--info)}
+
+/* ---------- eval */
+.evalgrid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:12px}
+.viewer{position:relative;height:calc(100vh - 230px);min-height:340px;background:#fff;border-radius:9px;overflow:hidden;touch-action:none;cursor:crosshair}
+.viewer canvas{position:absolute;inset:0;width:100%;height:100%}
+.vtools{position:absolute;right:8px;top:8px;display:flex;gap:6px;z-index:2}
+.vtools button{min-height:40px;min-width:44px;background:#1c222ae6}
+.field{display:grid;gap:4px;margin-bottom:10px}.field label{font-size:13px;color:var(--mut)}.field input,.field select{width:100%;min-width:0}
+.fs{position:fixed!important;inset:0!important;z-index:50;height:100vh!important;max-height:none!important;border-radius:0!important}
+
+/* ---------- login */
+.gate{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(1200px 600px at 20% -10%,#1b2a3f 0,transparent 60%),var(--bg)}
+.gate .card{width:min(440px,100%);padding:22px 22px 18px}
+.gate h1{margin:0 0 4px;font-size:22px}.gate .field input{width:100%}
+.err{color:#ffb3ae;min-height:22px;font-size:14px;margin-top:6px}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--s3);border:1px solid var(--line);padding:10px 16px;border-radius:10px;z-index:60;max-width:90vw;font-size:14px;display:none}
+.toast.show{display:block}.toast.bad{border-color:var(--bad);background:var(--bad-bg)}
+
+/* ---------- E6 manual focus panel + E8 flow steps (2026-10-26) */
+.e6m{border-color:var(--warn);margin-bottom:12px}
+.e6mgrid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:14px}
+.e6mv{max-height:none}.e6mv canvas{touch-action:none}
+.e6mtools,.e6mbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.e6mbtns button{flex:1 1 auto}
+.e6mbtns .primary{min-height:58px;font-size:17px;flex-basis:100%}
+.e6mnum{font-size:20px;font-weight:750}
+.fsteps{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.fsteps span{font-size:12.5px;padding:3px 9px;border-radius:12px;background:var(--neu-bg);color:var(--mut)}
+.fsteps span.done{background:var(--live-bg);color:#8ff0bd}.fsteps span.now{background:var(--warn-bg);color:#ffd28a;font-weight:700}
+.fsteps span.bad{background:var(--bad-bg);color:#ffb3ae;font-weight:700}
+.chip{display:inline-block;font-size:12.5px;padding:2px 8px;margin:1px 0;border-radius:11px;background:var(--neu-bg);color:var(--mut)}.chip.ok{background:var(--live-bg);color:#8ff0bd}.chip.warn{background:var(--warn-bg);color:#ffd28a}.chip.bad{background:var(--bad-bg);color:#ffb3ae}
+@media (max-width:1000px){.e6mgrid{grid-template-columns:1fr}}
+@media (max-width:1000px){.prep,.livegrid,.evalgrid{grid-template-columns:1fr}.media{max-height:none}.viewer{height:60vh}.steps{grid-template-columns:1fr}}
+@media (max-width:560px){.top{gap:6px}.brand{width:100%}main{padding:10px}.kv{grid-template-columns:1fr}.tabs button{padding:0 10px}}
+</style>
+</head>
+<body>
+
+<!-- ===================== login / enrollment ===================== -->
+<div id="gate" class="gate hide">
+  <div class="card">
+    <h1>LIVE-FIELD2 운용</h1>
+    <div class="mut small" id="g_sub">운용자 로그인</div>
+    <div id="g_lan" class="note warn hide" style="margin-top:14px">이 주소(<span id="g_host"></span>)에서는 열 수 없습니다. 로봇 내부 망은 암호화되지 않습니다.<br>
+      태블릿의 Tailscale 주소 <b id="g_ts"></b> 로 접속하십시오.</div>
+    <form id="f_login" class="hide" style="margin-top:16px" onsubmit="return doLogin(event)">
+      <div class="field"><label>아이디</label><input type="text" id="l_user" value="recs" autocomplete="username" autocapitalize="none"></div>
+      <div class="field"><label>비밀번호</label><input type="password" id="l_pw" autocomplete="current-password"></div>
+      <label class="switch" style="width:100%"><input type="checkbox" id="l_rem" checked> 이 기기에서 로그인 상태 유지 (30일)</label>
+      <div class="err" id="l_err"></div>
+      <button class="primary" style="width:100%">로그인</button>
+      <div class="small mut" style="margin-top:12px">로그인은 화면 사용 권한일 뿐입니다. 실제 장치 실행은 현재 부팅의 실행 승인(A)이 있어야 합니다.</div>
+      <div id="l_legacy" class="small hide" style="margin-top:10px"><a href="#" onclick="showLegacy();return false" style="color:var(--info)">기존 운용자 토큰으로 로그인 (전환 기간)</a></div>
+    </form>
+    <form id="f_legacy" class="hide" style="margin-top:16px" onsubmit="return doLegacy(event)">
+      <div class="field"><label>운용자 토큰 (전환 기간 임시 경로)</label><input type="password" id="t_tok" autocomplete="off"></div>
+      <div class="err" id="t_err"></div>
+      <button style="width:100%">토큰으로 로그인</button>
+      <div class="small" style="margin-top:10px"><a href="#" onclick="showLogin();return false" style="color:var(--info)">아이디·비밀번호 로그인으로 돌아가기</a></div>
+    </form>
+    <form id="f_enroll" class="hide" style="margin-top:16px" onsubmit="return doEnroll(event)">
+      <div class="note" style="margin-bottom:12px">처음 한 번만 비밀번호를 정합니다. 로봇 안의 설정 코드 파일이 있어야 다른 사람이 먼저 비밀번호를 정할 수 없습니다.<br><span class="mono small" id="e_file"></span></div>
+      <div class="field"><label>아이디</label><input type="text" id="e_user" value="recs" readonly></div>
+      <div class="field"><label>설정 코드</label><input type="password" id="e_code" autocomplete="off"></div>
+      <div class="field"><label>새 비밀번호 (10자 이상, 대·소문자·숫자·기호 중 3종류 이상 또는 16자 이상)</label><input type="password" id="e_pw" autocomplete="new-password"></div>
+      <div class="field"><label>새 비밀번호 확인</label><input type="password" id="e_pw2" autocomplete="new-password"></div>
+      <label class="switch" style="width:100%"><input type="checkbox" id="e_rem" checked> 이 기기에서 로그인 상태 유지 (30일)</label>
+      <div class="err" id="e_err"></div>
+      <button class="primary" style="width:100%">비밀번호 설정 후 로그인</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== app ===================== -->
+<div id="app" class="hide">
+<div class="stick"><header class="top">
+  <span class="brand">LIVE-FIELD2</span>
+  <span id="h_exp" class="pill p-neu"><i></i>—</span>
+  <span id="h_appr" class="pill p-neu">승인 확인 중</span>
+  <span id="h_res" class="pill p-neu">—</span>
+  <span id="h_fake" class="pill p-warn hide">FAKE 시험 데이터</span>
+  <span class="spacer"></span>
+  <span class="usr"><button class="ghost sm" onclick="toggleMenu(event)" id="h_user">recs ▾</button>
+    <div class="menu" id="menu">
+      <div class="small mut" style="padding:6px 10px" id="m_info"></div>
+      <button onclick="goTab('rec');openAcct()">비밀번호 변경 · 접속 기기</button>
+      <button onclick="logout()">로그아웃</button>
+      <button onclick="logoutAll()" style="color:#ffb3ae">모든 기기에서 로그아웃</button>
+    </div></span>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-t="run" class="on">운용</button><button data-t="cand">전역 위치 후보</button><button data-t="sem">의미 관측</button>
+  <button data-t="eval">실험 평가</button><button data-t="rec">기록·진단</button>
+</nav></div>
+<main>
+<!-- ============ 운용 ============ -->
+<section class="tab on" id="t_run">
+  <div id="run_idle">
+<!-- PLATE_MERGE_BEGIN -->
+    <div id="plate_idle" class="note warn hide" style="margin:0 0 10px">실험은 끝났지만 팬틸트가 아직 연결돼 있습니다.
+      <button class="sm" id="plate_idle_off" style="margin-left:8px">정면으로 돌리고 연결 끊기</button></div>
+<!-- PLATE_MERGE_END -->
+    <div class="prep">
+      <div class="card">
+        <h3>실험 준비</h3>
+        <div class="checks" id="checks"></div>
+        <div class="opts">
+          <div id="auto_note" class="note small" style="grid-column:1/-1;width:100%;margin-bottom:8px">로봇이 어느 층·어느 구역인지 모르는 상태로 시작합니다. 구조만으로 구별되면 LiDAR로, 구별되지 않으면 표지판까지 사용해 위치를 스스로 결정합니다. <b>시작 위치(평가용)</b>는 채점에만 쓰이며 위치추정 입력이 아닙니다.</div>
+          <label class="mut small">건물</label><select id="bld"></select>
+          <input type="checkbox" id="sig" checked class="hide">
+          <label class="mut small">FAST-LIO 입력</label><select id="inp"><option value="l1" selected>L1 IMU (기존 기본)</option>
+            <option value="body">Go2 본체 IMU (L1 좌표 어댑터)</option></select>
+          <label class="mut small loc2only">E6 실행 방식</label><select id="e6mode" class="loc2only"><option value="MANUAL_SETTLE" selected>MANUAL_SETTLE — 정지 후 운영자 승인 대기</option>
+            <option value="AUTO">AUTO — 기존 자동 실행</option></select>
+        </div>
+        <div class="note small loc2only" id="ptc_box" style="margin:6px 0 10px">
+          <label class="switch" style="font-size:1.1em"><input type="checkbox" id="ptc_use" onchange="ptcSync()"> <b>이번 실험에서 팬틸트 카메라 사용</b></label> <span class="small mut">하드웨어 사용 동의입니다. 위치 정보를 알고리즘에 주지 않으며, 실제 조준은 로봇이 표지판이 필요하다고 판단할 때만 합니다.</span>
+          <div id="ptc_acks" class="hide" style="margin-top:6px;line-height:1.9">
+            <label><input type="checkbox" class="ptc_ack" data-k="operator_supervises"> 운영자가 로봇을 직접 감독합니다</label><br>
+            <label><input type="checkbox" class="ptc_ack" data-k="manual_button_starts_aim"> 정지 후 <b>[① 진동 안정 확인 · 팬틸트 조준 시작]</b> 버튼을 눌러야 조준이 시작됩니다</label><br>
+            <label><input type="checkbox" class="ptc_ack" data-k="motion_blocks_drive"> 로봇이 실제로 움직이면 팬틸트 구동이 차단됩니다</label><br>
+            <label><input type="checkbox" class="ptc_ack" data-k="manual_focus_no_motor"> 초점은 직접 맞추고(초점 모터 사용 안 함), <b>[② 초점 확인 완료 · 사진 촬영]</b>을 눌러야 촬영합니다</label><br>
+            <label><input type="checkbox" id="ptc_vlm"> VLM 사용 (메모리 여유가 있을 때만, 아니면 OCR만)</label>
+            <div class="mut">이 동의는 이번 실험에만 유효하며 [실험 종료] 때 자동으로 끝납니다. 서보 허용 범위·정지 확인·중복 실행 방지·HOME 처리는 그대로 적용됩니다.</div>
+          </div>
+        </div>
+        <div class="why" id="inp_status"></div>
+        <div id="appr_card" class="hide" style="margin:4px 0 12px"></div>
+        <button class="primary go" id="b_start" onclick="startExp()">자동 초기 전역 위치추정 시작</button>
+        <div class="why" id="start_why"></div>
+      </div>
+      <div class="card">
+        <h3>진행 순서</h3>
+        <div class="steps" style="grid-template-columns:1fr;margin-top:0">
+          <div class="step"><span class="n">1</span><b>실험 시작</b><p>승인된 모듈을 순서대로 켭니다: FAST-LIO → 지도 축적 → 센서 → 기록 → SigLIP → E3/E4 → E2. 실패하면 이유를 보여 주고 자동 재시도하지 않습니다.</p></div>
+          <div class="step"><span class="n">2</span><b>정지 상태로 초기화 (10–20초)</b><p>“위치 입력 정상”이 뜰 때까지 로봇을 움직이지 마십시오 (FAST-LIO IMU 초기화).</p></div>
+          <div class="step"><span class="n">3</span><b>조이스틱으로 자유 주행</b><p>정해진 경로는 없습니다. 최근 60초 동안 2 m 이상 움직이면 전 층 위치 후보 탐색이 시작됩니다 (CPU, 약 7–8분/9개 층).</p></div>
+        </div>
+        <div class="small mut" style="margin-top:10px">층·호실·정답 위치는 위치 추정에 전달되지 않습니다. 정답(GT)은 ‘실험 평가’에서 평가용으로만 기록합니다.</div>
+        <div id="last_exp" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="run_live" class="hide">
+    <div class="ctlbar">
+      <div class="stepper" id="stepper"></div>
+      <span class="grow"></span>
+      <button class="sm" id="b_snd" onclick="soundTest()">🔊 알림음 켜기</button>
+      <button id="b_pause" onclick="act('pause')">분석 일시정지 <span class="small mut">(로봇 정지 아님)</span></button>
+      <button id="b_resume" class="hide" onclick="act('resume')">분석 재개</button>
+      <button id="b_end" class="danger" onclick="endExp()">실험 종료 · 기록 저장</button>
+    </div>
+    <div id="live_note"></div>
+    <div id="safety_banner"></div>
+    <div id="ready_banner"></div>
+    <div id="struct_banner"></div>
+    <div id="settle_panel"></div>
+<!-- PLATE_MERGE_BEGIN -->
+    <div id="plate_panel" class="card" style="margin-bottom:10px;padding:10px 10px 6px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px">
+        <h3 style="margin:0">명판 촬영 — 신호음이 나면 안내대로 이동해 촬영</h3>
+        <span id="plate_stat" class="pill p-neu">확인 전</span>
+        <span class="spacer"></span>
+        <button class="ghost sm" id="plate_reload">다시 불러오기</button>
+      </div>
+      <iframe id="plate_frame" data-port="8791" title="명판 촬영" allow="autoplay" scrolling="no"
+              style="display:block;width:100%;height:640px;border:0;border-radius:8px;background:#111827"></iframe>
+    </div>
+<!-- PLATE_MERGE_END -->
+    <div id="now_card" class="hide"></div>
+    <div id="final_card" class="hide"></div>
+    <div id="field_status" class="card hide" style="margin-bottom:10px"></div>
+    <div id="loc_map_box" class="card hide" style="margin-bottom:10px"><h3 style="margin:0 0 6px">지도 <span class="small mut" id="loc_map_title"></span><button class="sm r" id="loc_map_mode" onclick="locMapToggle()">전체 층 보기</button></h3>
+      <div class="small mut hide" id="loc_map_empty" style="padding:30px 0;text-align:center">주변 구조를 분석하여 현재 위치를 탐색하고 있습니다.</div>
+      <canvas id="loc_map" width="1000" height="600" style="width:100%;height:auto;background:#fff;border-radius:6px"></canvas>
+      <details class="small" style="margin-top:4px"><summary>지도 범례·LiDAR 정합 상세</summary><div id="loc_map_legend" style="margin-top:4px"></div><div id="topk_box" style="margin-top:6px"></div></details></div>
+    <div id="sem_banner"></div>
+    <details id="loc_details" class="card" style="margin-bottom:10px"><summary><b>상세 정보</b> <span class="small mut">E2 층 탐색 · E3 후보 · E4 판정 · E5/E6 관측·판독 · E7 검증 · FIX 정책</span></summary>
+    <div id="loc_progress" style="margin-top:8px"></div>
+    <div id="flow_steps" class="fsteps"></div>
+    <div id="e8_brief" class="small" style="margin:-4px 0 10px"></div>
+    <div id="sem_card"></div></details>
+    <div id="e6m" class="card e6m hide">
+      <h3>E6 — 수동 초점 및 고해상도 관측 <span class="small mut">IMX477 — Pan/Tilt 고해상도 카메라 실시간 영상</span><span class="r" id="e6m_pill"></span></h3>
+      <div class="note" style="font-size:1.15em;margin-bottom:8px"><b>표지판을 확인하고 직접 초점을 맞춘 뒤 [② 초점 확인 완료 · 사진 촬영]을 눌러주세요.</b> <span class="small">실시간 미리보기는 저장되지 않으며, ② 버튼 전에는 최종 사진을 찍지 않습니다. 초점 모터는 사용하지 않습니다.</span></div>
+      <div class="e6mgrid">
+        <div>
+          <div class="media e6mv" id="e6m_box"><img id="e6m_img" alt=""><canvas id="e6m_cv" width="1280" height="720"></canvas>
+            <span class="badge pill p-neu" id="e6m_badge">—</span><div class="veil hide" id="e6m_veil"></div>
+            <div class="tools"><button class="sm" onclick="e6mZoom()">닫기 / 확대</button></div></div>
+          <div class="e6mtools">
+            <button class="sm" onclick="e6mZoom()">영상 확대</button>
+            <button class="sm" id="e6m_roi_b" onclick="e6mRoiMode()">표지판 영역 선택</button>
+            <button class="sm ghost" onclick="e6mRoiAuto()">자동 영역</button>
+            <button class="sm" onclick="e6mSave()">현재 화면 저장</button>
+          </div>
+        </div>
+        <div>
+          <div id="e6m_zwrap" style="margin-bottom:8px"><div class="small mut" id="e6m_zcap">표지판 확대 (선택 영역 ×2–3 — 화면 확대일 뿐 광학 해상도는 그대로)</div>
+            <canvas id="e6m_zoom" width="480" height="270" style="width:100%;background:#111;border-radius:6px"></canvas>
+            <div class="kv" id="e6m_q" style="margin-top:4px"></div></div>
+          <div id="e6m_rev" class="note hide" style="margin-bottom:8px"></div>
+          <div class="kv" id="e6m_kv"></div>
+          <div id="e6m_warn" style="margin-top:8px"></div>
+          <div id="e6m_ask" class="note warn hide" style="margin-top:8px"></div>
+          <div class="e6mbtns">
+            <button class="primary" id="e6m_go" onclick="e6mDone()" style="font-size:20px;min-height:64px">② 초점 확인 완료 · 사진 촬영</button>
+            <button id="e6m_cancel" onclick="e6mCancel()">관측 취소</button>
+            <button class="danger sm" id="e6m_abort" onclick="e6mAbort()">관측 중단 (HOME 안 함)</button>
+          </div>
+          <div class="small mut" id="e6m_why" style="margin-top:6px"></div>
+          <div class="small mut" style="margin-top:8px">DC 초점 모터는 쓰지 않습니다 — 렌즈 초점링을 손으로 돌리십시오. 이 동안 팬틸트는 움직이지 않습니다.
+            팬·틸트 값은 Nano 명령각이며 실제 각도 측정값이 아닙니다. HOME 복귀 확인 = 명령각이 HOME + 새 영상 수신 (각도 센서 없음).</div>
+        </div>
+      </div>
+    </div>
+    <div id="aim_card" class="card hide" style="margin-bottom:12px">
+      <h3>E6 조준 상세 — 최근 SigLIP 정지 요청 <span class="r" id="aim_pill"></span></h3>
+      <div class="e6mgrid">
+        <div><div class="small mut" style="margin-bottom:4px">RealSense D435i — SigLIP 검출 영상 (검출 시점, 노란 상자 = SigLIP 영역)</div>
+          <div class="media" id="aim_box"><img id="aim_img" alt=""><canvas id="aim_cv"></canvas></div></div>
+        <div><div class="kv" id="aim_kv"></div>
+          <details style="margin-top:8px"><summary>운영자 상세 (좌표·각도)</summary><div class="kv small" id="aim_kv2"></div></details></div>
+      </div>
+    </div>
+    <div class="livegrid">
+      <div class="card">
+        <div class="small mut" style="margin:-2px 0 4px">RealSense D435i — SigLIP 검출 영상</div>
+        <h3><span class="seg" id="camseg"><button data-v="rgb" class="on">실시간 RGB</button><button data-v="sig">SigLIP 후보</button></span>
+          <label class="small" style="margin-left:8px"><input type="checkbox" id="op_pick"> 운용자 지정</label>
+          <span class="r small" id="cam_meta"></span></h3>
+        <div class="media" id="cam"><img id="cam_img" alt=""><canvas id="cam_cv"></canvas>
+          <span class="badge pill p-neu" data-base="badge" id="cam_badge">—</span>
+          <div class="tools"><button class="sm" onclick="fsToggle('cam')">전체화면</button></div>
+          <div class="veil hide" id="cam_veil"></div></div>
+        <div class="small mut" id="cam_cap" style="margin-top:6px"></div>
+      </div>
+      <div class="side">
+        <div class="card"><h3>FAST-LIO 위치 · 이동 궤적 <span class="r"><span class="seg" id="mapseg"><button data-v="trk" class="on">궤적</button><button data-v="map">축적 지도</button></span>
+            <span class="seg" id="trkseg"><button data-v="up" class="on">시작 방향 위</button><button data-v="robot">로봇 중심</button><button data-v="raw">원시</button></span></span></h3>
+          <div class="mapbox" id="mapbox"><canvas id="trk" width="640" height="360"></canvas><img id="accmap" class="hide" alt=""></div>
+          <div class="small" id="lio_line" style="margin-top:6px"></div></div>
+        <div class="card"><h3>전역 위치 <span class="r pill p-neu">전역 위치 미확정 (UNKNOWN)</span></h3>
+          <div class="big" id="e4_title">—</div><div class="small mut" id="e4_sub"></div>
+          <div class="hyp" id="hyp_top" style="margin-top:8px"></div>
+          <div class="small" id="e2_line" style="margin-top:8px"></div>
+          <div class="small mut" id="sem_line" style="margin-top:4px"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 전역 위치 후보 ============ -->
+<section class="tab" id="t_cand">
+  <div id="cand_idle" class="empty">실행 중인 실험이 없습니다. 지난 실험의 후보는 ‘기록·진단 → 지난 실험’에서 볼 수 있습니다.</div>
+  <div id="cand_live" class="hide">
+    <div class="card"><h3>E2 다층 초기 후보 · E3 갱신 · E4 판단 <span class="r small mut">score = 기하 불일치(m, 낮을수록 좋음 · 확률 아님) · 모든 후보는 미검증 가설</span></h3>
+      <div class="kv" id="cand_kv"></div>
+      <div style="overflow-x:auto;margin-top:8px"><table id="cand_tbl"></table></div></div>
+    <details id="floor_det"><summary>층별 후보 위치 (평면도)</summary><div id="floors" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;padding:8px 0"></div></details>
+    <details><summary>E4 판단 근거 (원문)</summary><ul id="e4_raw" class="small mono"></ul></details>
+    <details><summary>E3 최근 사건</summary><table id="e3_ev" class="small"></table></details>
+  </div>
+</section>
+
+<!-- ============ 의미 관측 ============ -->
+<section class="tab" id="t_sem">
+  <div id="sem_idle" class="empty">실행 중인 실험이 없습니다. SigLIP 프레임은 실험 중에만 표시됩니다.</div>
+  <div id="sem_live" class="hide livegrid">
+    <div class="card"><h3>SigLIP 추론 프레임 <span class="r small" id="sem_meta"></span></h3>
+      <div class="media" id="semm"><img id="sem_img" alt=""><canvas id="sem_cv"></canvas><span class="badge pill p-neu" data-base="badge" id="sem_badge">—</span>
+        <div class="tools"><button class="sm" onclick="fsToggle('semm')">전체화면</button></div><div class="veil hide" id="sem_veil"></div></div>
+      <div style="overflow-x:auto;margin-top:8px"><table id="reg_tbl"></table></div></div>
+    <div class="side">
+      <div class="card"><h3>의미 관측 필요도 (E4 → E5)</h3><div class="kv" id="need_kv"></div><div style="overflow-x:auto"><table id="need_tbl" class="small"></table></div></div>
+      <div class="card"><h3>E6 정밀 관측</h3><div class="kv" id="e6_kv"></div>
+        <div class="small mut" style="margin-top:6px">운용자 지정: 실시간 운용 화면의 RGB 영상에서 ‘운용자 지정’을 켠 뒤 표지판을 누르면 OPERATOR_ASSISTED 관측이 됩니다 (자동 E5 성공으로 세지 않음).</div></div>
+      <div class="card"><h3>E8 이중 관측 <span class="r small" id="e8_state"></span></h3><div id="e8_box" class="small"></div>
+        <canvas id="e8_map" width="520" height="220" style="width:100%;background:#fff;border-radius:6px;margin-top:6px"></canvas>
+        <div class="small mut">● 1차 예상(미확정) ● 2차 예상(미확정) ◆ 융합 후보(미확정) ★ E7 최종(FIX 일 때만)</div></div>
+      <div class="card"><h3>연결 상태</h3><div class="kv" id="link_kv"></div>
+        <div class="small mut" style="margin-top:6px">E6 은 승인 B 가 있을 때만 정지 후 자동 실행됩니다. 1·2차 예상 위치와 융합 후보는 미확정이며, E7 검증을 통과한 결과만 FIX 입니다. 가짜 결과를 만들지 않습니다.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 실험 평가 ============ -->
+<section class="tab" id="t_eval">
+  <div style="margin-bottom:10px"><span class="seg" id="evseg"><button data-v="gt" class="on">정답 위치 (GT)</button><button data-v="det">검출 평가</button></span>
+    <span class="small mut" style="margin-left:10px">평가 전용 저장소에 기록되며 위치 추정에는 전달되지 않습니다.</span></div>
+  <div id="ev_gt" class="evalgrid">
+    <div class="card">
+      <div class="field"><label>건물</label><select id="gtb" onchange="gtFloors()"></select></div>
+      <div class="field"><label>층 (평가 지도)</label><select id="gtf" onchange="gtLoad()"></select></div>
+      <div class="field"><label>종류</label><span class="seg" id="gtk"><button data-v="start" class="on">시작 위치</button><button data-v="checkpoint">확인 지점</button><button data-v="end">종료 위치</button></span></div>
+      <label class="switch" style="width:100%;margin-bottom:10px"><input type="checkbox" id="gtyaw"> 두 번째 탭으로 방향 지정</label>
+      <div class="field"><label>메모 (선택)</label><input type="text" id="gtnote"></div>
+      <button class="primary" style="width:100%" onclick="gtSave()" id="gt_save" disabled>GT 저장</button>
+      <div class="small" id="gt_msg" style="margin-top:8px"></div>
+      <div class="small mut" id="gt_info" style="margin-top:8px">지도에서 실제 위치를 탭하십시오. 두 손가락·휠로 확대, 끌어서 이동.</div>
+      <details><summary>저장된 GT</summary><table id="gt_list" class="small"></table></details>
+    </div>
+    <div class="viewer" id="gtv"><canvas id="gt_cv"></canvas>
+      <div class="vtools"><button onclick="gtZoom(1.4)">＋</button><button onclick="gtZoom(1/1.4)">－</button><button onclick="gtFit()">맞춤</button><button onclick="fsToggle('gtv')">전체</button></div></div>
+  </div>
+  <div id="ev_det" class="hide">
+    <div id="det_none" class="empty">실험 시작 후 SigLIP 프레임이 도착하면 검출 평가를 할 수 있습니다.</div>
+    <div id="det_ui" class="hide evalgrid">
+      <div class="card">
+        <button style="width:100%" onclick="snap()" id="b_snap">현재 프레임 고정</button>
+        <div class="small" id="d_msg" style="margin:8px 0"></div>
+        <div class="field"><label>표지 문자 (선택)</label><input type="text" id="d_text"></div>
+        <div class="field"><label>메모 (선택)</label><input type="text" id="d_note"></div>
+        <div style="display:grid;gap:8px">
+          <button class="primary" onclick="dlab('TP')" data-need="reg" disabled>올바른 검출</button>
+          <button class="danger" onclick="dlab('FP')" data-need="reg" disabled>오검출</button>
+          <button onclick="dlab('MISSED')" data-need="pt" disabled>놓친 표지판</button>
+          <button onclick="dlab('AMBIGUOUS')" data-need="any" disabled>애매한 관측</button></div>
+        <div class="small mut" style="margin-top:10px">상자를 탭하면 그 검출을 선택합니다. 상자 밖을 탭하면 ‘놓친 표지판’ 위치가 됩니다. 사람이 확인한 항목만 정답으로 남습니다.</div>
+        <details><summary>저장된 평가</summary><table id="d_list" class="small"></table></details>
+      </div>
+      <div class="viewer" id="detv" style="background:#000;cursor:pointer"><canvas id="det_cv"></canvas>
+        <div class="vtools"><button onclick="fsToggle('detv')">전체</button></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 기록·진단 ============ -->
+<section class="tab" id="t_rec">
+  <div class="livegrid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+    <div class="card"><h3>지난 실험 <span class="r pill p-hist">기록 (현재 아님)</span></h3><table id="hist_tbl"></table></div>
+    <div class="card"><h3>선택한 지난 실험 <span class="r pill p-hist">기록</span></h3><div id="hist_det" class="mut small">왼쪽 목록에서 실험을 선택하십시오.</div></div>
+  </div>
+  <details id="acct"><summary>계정 · 접속 기기</summary>
+    <div class="livegrid" style="padding:8px 0">
+      <div><div class="field"><label>현재 비밀번호</label><input type="password" id="pw_cur" autocomplete="current-password"></div>
+        <div class="field"><label>새 비밀번호</label><input type="password" id="pw_new" autocomplete="new-password"></div>
+        <div class="field"><label>새 비밀번호 확인</label><input type="password" id="pw_new2" autocomplete="new-password"></div>
+        <button onclick="changePw()">비밀번호 변경 (다른 기기 모두 로그아웃)</button><div class="small" id="pw_msg" style="margin-top:6px"></div></div>
+      <div><table id="dev_tbl" class="small"></table><button class="danger sm" style="margin-top:8px" onclick="logoutAll()">모든 기기에서 로그아웃</button></div>
+    </div></details>
+  <details><summary>모듈 · 승인 · 프로세스 상세</summary><div class="kv" id="diag_appr" style="margin:8px 0"></div><div style="overflow-x:auto"><table id="diag_mod"></table></div><div class="small mut" id="diag_job" style="margin-top:6px"></div></details>
+  <details><summary>처리시간 · 입력 신선도</summary><table id="diag_lat" class="small"></table></details>
+  <details><summary>실험 사건 기록</summary><table id="diag_tl" class="small"></table></details>
+  <div class="small mut" style="margin-top:12px">이전 화면(전환 기간 복구용): <a href="/legacy" style="color:var(--info)">/legacy</a></div>
+</section>
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"—":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const f=(v,d=1)=>v==null||Number.isNaN(v)?"—":(typeof v==="number"?v.toFixed(d):esc(v));
+const SNAPSHOT=location.search.includes("snap=1");
+let S=null, CS=null, SESS=null, CSRF=null, TAB="run", lastExpState=null, CONTROL=true, DEVICE=false;
+
+/* ---------------- plain-language dictionary (raw code stays in the details) ---------------- */
+const KO={exp:{IDLE:["실험 없음","p-neu"],STARTING:["시작 중","p-info"],RUNNING:["실행 중","p-live"],PARTIAL:["일부 모듈 문제","p-warn"],
+   PAUSED:["분석 일시정지","p-warn"],STOPPING:["종료 중","p-info"],ENDED:["종료됨","p-neu"],ENDED_WITH_LEFTOVERS:["종료 (정리 필요)","p-bad"]},
+ mod:{PENDING:"대기",STARTING:"켜는 중",RUNNING:"정상",FAILED:"시작 실패",REFUSED:"거부됨",SKIPPED:"건너뜀",STOPPED:"정지",ENDED_UNEXPECTEDLY:"예기치 않게 꺼짐",STOP_FAILED:"정지 실패"},
+ e2:{WAITING_DATA:["관측 수집 중 (60초 창)","p-info"],WAITING_MOTION:["이동 필요 — 2 m 이상 움직이십시오","p-warn"],RUNNING:["층별 탐색 중","p-info"],
+   IDLE:["탐색 완료 · 재탐색 대기","p-live"],DONE:["탐색 완료","p-live"],FAILED:["모든 층 정합 실패","p-bad"],
+   INTERRUPTED:["탐색 중단됨 (실험 종료)","p-neu"],PARTIAL_INTERRUPTED:["일부 층만 탐색 후 중단","p-warn"],NO_RESULT:["후보 없음","p-warn"],PAUSED:["일시정지","p-warn"],STALE:["갱신 끊김","p-bad"]},
+ e4:{INITIALIZING:["초기화 중","p-neu","E2 첫 탐색 결과를 기다립니다"],SEARCH_INCOMPLETE:["층 탐색 진행 중","p-info","아직 모든 층을 보지 않았습니다"],
+   AMBIGUOUS:["위치 모호성 발생","p-warn","여러 후보가 관측을 비슷하게 설명합니다 — 표지판 관측(SigLIP)이 필요합니다"],
+   DOMINANT_UNVERIFIED:["우세 후보 있음 (미검증)","p-info","증거가 더 쌓여야 합니다"],CONFIDENT_GEOMETRY:["기하적으로 우세 (미검증)","p-live","의미 확인(E6/E7)은 연결되지 않았습니다"],
+   RECOVERY_REQUIRED:["다시 찾기 필요","p-bad","입력이 끊겼거나 후보가 남지 않았습니다"],
+   GEOMETRY_INCONSISTENT:["기하 불일치","p-bad","어떤 후보도 LiDAR 형상을 다른 후보보다 잘 설명하지 못합니다 — 재탐색"]},
+ gate:{approval_A:"실행 승인(A)",run_limit:"실행 시간 한도",resources_start:"온도·메모리 조건",ros_graph:"ROS 연결 상태",fastlio_topology:"LiDAR·IMU 토픽 구성",
+   odometry_present:"FAST-LIO 위치 출력 없음",camera_topology:"카메라 토픽 구성",protected_processes:"로봇 센서 서비스 상태",student_components_not_running:"학생 운영판 실행 중",
+   model_present:"SigLIP 모델 없음",code_identity:"코드 경로",accum_approved:"지도 축적 승인",workspace_marker:"작업공간"}};
+function reasonKo(r){ if(!r) return ""; const t=String(r);
+  const map=[[/^ODOMETRY_STALE/,"FAST-LIO 위치 입력이 끊겼습니다"],[/^E2_FEED_STALE/,"E2 관측 입력이 끊겼습니다"],[/^E2_ALL_FLOORS_FAILED/,"모든 층 정합 실패 (이동이 부족했을 수 있음)"],
+    [/^NO_ACTIVE_HYPOTHESIS/,"전 층을 찾았지만 남은 후보가 없습니다"],[/^E2_WAITING_FOR_WINDOW/,"E2 관측 창을 모으는 중입니다"],[/^E2 pass \d+: (\d+)\/(\d+)/,"층 탐색 진행 중"],
+    [/competitor .*OTHER_FLOOR/,"다른 층 후보와 차이가 작습니다"],[/explain the scans within/,"여러 층이 관측을 비슷하게 설명합니다"],[/leader without enough/,"1위 후보의 증거가 아직 부족합니다"],
+    [/leader stable for/,"1위가 아직 충분히 유지되지 않았습니다"],[/^APPROVAL_EXPIRED/,"실행 승인 시간이 지났습니다"],[/^APPROVAL_FOR_OTHER_BOOT/,"다른 부팅의 승인입니다 — 새 승인 필요"],
+    [/^NO_APPROVAL_RECORD/,"실행 승인 기록이 없습니다"],[/^STANDING_SUSPENDED/,"연구 실행 권한 일시 중지"],[/^STANDING_REVOKED/,"연구 실행 권한 철회됨"],[/^PREFLIGHT_NOT_READY/,"자원 보호로 실행 대기"],[/^EXPERIMENT_MAX_TIME/,"설정한 실험 최대 시간 도달"],[/SAFETY_THERMAL_SUSTAINED/,"안전 종료: 80 °C 이상 60초 지속"],[/SAFETY_DEVICE_THROTTLING/,"안전 종료: 장치 스로틀링"],[/SAFETY_ODOMETRY_STALE/,"안전 종료: 위치 입력 10초 끊김"],[/SAFETY_CORE_MODULE_FAILED/,"안전 종료: 핵심 모듈 장애"],[/SAFETY_SENSOR_FAULT/,"안전 종료: 센서 장애"],[/SAFETY_MEMORY_LOW/,"안전 종료: 메모리 부족"],[/^MODULE_NOT_APPROVED/,"승인되지 않은 모듈"],[/^PAUSED/,"분석이 일시정지되었습니다"],[/WAITING_MOTION/,"이동이 더 필요합니다"]];
+  for(const [re,k] of map) if(re.test(t)) return k; return t; }
+function failKo(lines){ return (lines||[]).map(l=>{const m=/FAIL\s+(\S+)/.exec(l); if(m) return (KO.gate[m[1]]||m[1])+" 조건 미충족"; const r=/REFUSED start (\S+): \[(.*)\]/.exec(l);
+  if(r) return r[2].split(",").map(x=>KO.gate[x.trim().replace(/'/g,"")]||x.trim()).join(", ")+" 때문에 거부"; if(/ENDED|ABORT_TEMP/.test(l)) return /ABORT_TEMP/.test(l)?"온도 보호로 중단":"프로세스 종료: "+l; return reasonKo(l);}); }
+const pill=(el,txt,cls)=>{el.className=(el.dataset.base?el.dataset.base+" ":"")+"pill "+cls; el.innerHTML="<i></i>"+esc(txt);};
+function toast(t,bad){const x=$("toast"); x.textContent=t; x.className="toast show"+(bad?" bad":""); clearTimeout(x._t); x._t=setTimeout(()=>x.className="toast",4200);}
+const rid=()=>Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b=>b.toString(16).padStart(2,"0")).join("");
+async function jpost(url,body){const h={"Content-Type":"application/json"}; if(CSRF) h["X-CSRF-Token"]=CSRF;
+  try{const r=await fetch(url,{method:"POST",headers:h,body:JSON.stringify(body||{}),credentials:"same-origin"}); let j={}; try{j=await r.json();}catch(e){} return [r.status,j];}
+  catch(e){return [0,{why:"네트워크 오류"}];}}
+async function jget(url){try{const r=await fetch(url,{cache:"no-store",credentials:"same-origin"}); if(r.status===401){onLoggedOut(); return null;} return r.ok?await r.json():null;}catch(e){return null;}}
+function getSync(u){const x=new XMLHttpRequest(); x.open("GET",u,false); x.send(); return x.status===200?JSON.parse(x.responseText):null;}
+
+/* ---------------- session / login ---------------- */
+async function boot(){ SESS=SNAPSHOT?getSync("/api/session"):await jget("/api/session"); if(!SESS){$("gate").classList.remove("hide"); $("g_sub").textContent="서버에 연결할 수 없습니다"; return;}
+  CSRF=SESS.csrf; DEVICE=SESS.mode==="device";
+  if(DEVICE){ CONTROL=!!SESS.control_ok; if(SESS.read_ok) showApp(); else showDeviceGate(); return; }
+  if(SESS.logged_in){showApp();} else showGate(); }
+function showDeviceGate(){ $("app").classList.add("hide"); $("gate").classList.remove("hide"); ["f_login","f_legacy","f_enroll"].forEach(i=>$(i).classList.add("hide"));
+  $("g_lan").classList.remove("hide"); $("g_host").textContent=location.host; $("g_ts").textContent="http://<ROBOT_TAILSCALE_IP>:"+(location.port||80)+"/";
+  $("g_sub").textContent="이 기기에서는 열 수 없습니다 — "+(SESS.why||""); }
+function showGate(){ $("app").classList.add("hide"); $("gate").classList.remove("hide"); ["f_login","f_legacy","f_enroll","g_lan"].forEach(i=>$(i).classList.add("hide"));
+  if(!SESS.control_network_ok){ $("g_lan").classList.remove("hide"); $("g_host").textContent=location.host; $("g_ts").textContent="http://<ROBOT_TAILSCALE_IP>:"+(location.port||80)+"/"; $("g_sub").textContent="보기·제어는 Tailscale 에서만"; return;}
+  if(SESS.needs_enrollment){ $("f_enroll").classList.remove("hide"); $("g_sub").textContent="최초 비밀번호 설정"; $("e_file").textContent="설정 코드: "+SESS.setup_code_file; return;}
+  showLogin(); }
+function showLogin(){ $("f_legacy").classList.add("hide"); $("f_login").classList.remove("hide"); $("l_legacy").classList.toggle("hide",!SESS.legacy_token_login); $("g_sub").textContent="운용자 로그인"; setTimeout(()=>$("l_pw").focus(),50);}
+function showLegacy(){ $("f_login").classList.add("hide"); $("f_legacy").classList.remove("hide"); }
+async function doLogin(e){e.preventDefault(); $("l_err").textContent="";
+  const [c,j]=await jpost("/api/auth/login",{user:$("l_user").value.trim(),password:$("l_pw").value,remember:$("l_rem").checked}); $("l_pw").value="";
+  if(c===200){CSRF=j.csrf; SESS=await jget("/api/session"); showApp();} else $("l_err").textContent=j.why==="WRONG_ID_OR_PASSWORD"?"아이디 또는 비밀번호가 맞지 않습니다":(/LOCKED/.test(j.why||"")?"너무 많이 틀렸습니다 — 잠시 후 다시 시도":(j.why||"로그인 실패")); return false;}
+async function doLegacy(e){e.preventDefault(); const [c,j]=await jpost("/api/auth/login",{token:$("t_tok").value}); $("t_tok").value="";
+  if(c===200){CSRF=j.csrf; SESS=await jget("/api/session"); showApp();} else $("t_err").textContent=j.why||"실패"; return false;}
+async function doEnroll(e){e.preventDefault(); $("e_err").textContent="";
+  if($("e_pw").value!==$("e_pw2").value){$("e_err").textContent="두 비밀번호가 다릅니다"; return false;}
+  const [c,j]=await jpost("/api/auth/enroll",{user:"recs",setup_code:$("e_code").value,password:$("e_pw").value,remember:$("e_rem").checked});
+  ["e_code","e_pw","e_pw2"].forEach(i=>$(i).value="");
+  if(c===200){CSRF=j.csrf; SESS=await jget("/api/session"); toast("비밀번호가 설정되었습니다. 이 기기는 로그인 상태를 유지합니다."); showApp();}
+  else { const w=j.why||"설정 실패"; $("e_err").textContent=w==="SETUP_CODE_WRONG"?"설정 코드가 맞지 않습니다":(w==="ALREADY_ENROLLED"?"이미 비밀번호가 설정되어 있습니다 — 로그인하십시오":w.replace(/^WEAK_PASSWORD: /,"")); }
+  return false;}
+function onLoggedOut(){ if(SESS&&SESS.logged_in){SESS.logged_in=false; CSRF=null; boot();} }
+async function logout(){await jpost("/api/auth/logout"); location.reload();}
+async function logoutAll(){ if(!confirm("모든 기기(이 태블릿 포함)에서 로그아웃합니까?")) return; await jpost("/api/auth/logout_all"); location.reload();}
+function toggleMenu(e){e.stopPropagation(); $("menu").classList.toggle("open");} document.addEventListener("click",()=>$("menu").classList.remove("open"));
+
+/* ---------------- app ---------------- */
+let timer=null;
+function showApp(){ $("gate").classList.add("hide"); $("app").classList.remove("hide");
+  if(DEVICE){ $("h_user").textContent=(SESS.device||"기기")+(CONTROL?"":" · 보기 전용")+" ▾";
+    $("m_info").innerHTML=`이 기기: <b>${esc(SESS.device)}</b> (${CONTROL?"제어 허용":"보기 전용"})<br>로그인 없음 · Tailscale 기기 확인<br>제어 허용 장치: ${esc((SESS.trusted_devices||[]).join(", ")||"없음")}`;
+    document.querySelectorAll("#menu button").forEach(b=>b.classList.add("hide")); $("acct").classList.add("hide");
+    $("h_user").classList.toggle("p-warn",!CONTROL);
+  } else { $("h_user").textContent=(SESS.user||"recs")+" ▾"; $("m_info").textContent=SESS.kind==="legacy_token"?"토큰 로그인 (임시)":(SESS.remember?"로그인 유지: "+new Date(SESS.expires*1000).toLocaleDateString()+" 까지":"이 브라우저 세션 동안"); }
+  if(SNAPSHOT){ const _a=getSync("/api/state"),_b=getSync("/api/ctl/state"); render(_a,_b); inpStatus(_a,_b); const t=new URLSearchParams(location.search).get("tab"); if(t) goTab(t,true); return; }
+  poll(); clearInterval(timer); timer=setInterval(poll,1000); loadHistory(); }
+async function poll(){ if(document.hidden) return; const [a,b]=await Promise.all([jget("/api/state"),jget("/api/ctl/state")]); if(a&&b){ render(a,b); inpStatus(a,b); } }
+document.addEventListener("visibilitychange",()=>{if(!document.hidden) poll();});
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>goTab(b.dataset.t));
+function goTab(t,sync){TAB=t; document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+  document.querySelectorAll(".tab").forEach(s=>s.classList.toggle("on",s.id==="t_"+t));
+  if(t==="eval"&&!gtMeta) gtFloors(sync); if(t==="rec") loadHistory(); if(S&&CS) render(S,CS);
+  const h=new URLSearchParams(location.search).get("hist"); if(SNAPSHOT&&t==="rec"&&h) openHist(h);}
+function segInit(id,cb){$(id).querySelectorAll("button").forEach(b=>b.onclick=()=>{$(id).querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); cb(b.dataset.v);});}
+let CAM="rgb", MAPV="trk", EV="gt", GTK="start", TRKV="up";
+segInit("camseg",v=>{CAM=v; imgKey.cam=null; render(S,CS);});
+$("cam_img").addEventListener("click",async ev=>{ if(!$("op_pick").checked||!CONTROL) return; const im=ev.target, r=im.getBoundingClientRect();
+  const W=im.naturalWidth||640,H=im.naturalHeight||480, x=Math.round((ev.clientX-r.left)/r.width*W), y=Math.round((ev.clientY-r.top)/r.height*H);
+  const [c,j]=await jpost("/api/ctl/e6_operator_target",{request_id:rid(),x,y}); $("op_pick").checked=false;
+  toast(c===200?`운용자 지정 관측 ${j.observation_id} · 거리 ${j.depth_m} m — 조이스틱으로 정지하십시오`:"지정 실패: "+(j.why||c),c!==200); }); segInit("mapseg",v=>{MAPV=v; render(S,CS);}); segInit("trkseg",v=>{TRKV=v; render(S,CS);});
+segInit("evseg",v=>{EV=v; $("ev_gt").classList.toggle("hide",v!=="gt"); $("ev_det").classList.toggle("hide",v!=="det"); if(v==="gt") gtDraw();}); segInit("gtk",v=>GTK=v);
+function fsToggle(id){const e=$(id); e.classList.toggle("fs"); if(id==="gtv") setTimeout(gtDraw,30); if(id==="detv") setTimeout(dDraw,30);}
+
+const ACT=["STARTING","RUNNING","PARTIAL","PAUSED","STOPPING"];
+function render(d,cs){ if(!d||!cs) return; S=d; CS=cs; const X=cs.experiment||{}, st=X.state||"IDLE", active=ACT.includes(st), ap=cs.approval||{}, sf=cs.safety||{};
+  $("h_fake").classList.toggle("hide",!cs.fake);
+  const ek=KO.exp[st]||[st,"p-neu"]; pill($("h_exp"), (active?ek[0]+" · "+(X.exp_id||""):ek[0]), ek[1]);
+  const left=ap.remaining_s==null?null:Math.max(0,Math.round(ap.remaining_s));
+  const au=cs.authority||{};
+  if(au.kind==="STANDING") pill($("h_appr"),"연구 실행 권한: "+({ACTIVE:"상시 허용",SUSPENDED:"일시 중지",REVOKED:"철회됨"}[au.state]||"확인 필요"),au.valid?"p-live":(au.state==="SUSPENDED"?"p-warn":"p-bad"));
+  else if(ap.valid) pill($("h_appr"),"실행 승인 유효 · "+Math.floor(left/60)+"분 남음",left<600?"p-warn":"p-live"); else pill($("h_appr"),"실험 실행 승인 필요","p-bad");
+  const hot=sf.max_temp_c>=77, warm=sf.max_temp_c>=72; pill($("h_res"),`${f(sf.max_temp_c,0)}°C · 여유 메모리 ${f((sf.mem_available_mb||0)/1024,1)} GB`,hot?"p-bad":(warm?"p-warn":"p-neu"));
+  if(lastExpState&&lastExpState!==st&&!ACT.includes(st)&&ACT.includes(lastExpState)) loadHistory(); lastExpState=st;
+  $("run_idle").classList.toggle("hide",active); $("run_live").classList.toggle("hide",!active);
+  ["cand","sem"].forEach(t=>{$(t+"_idle").classList.toggle("hide",active); $(t+"_live").classList.toggle("hide",!active);});
+  if(!active) renderIdle(d,cs); else renderLive(d,cs);
+  renderDiag(d,cs); if(TAB==="eval") renderDet(d,cs);
+}
+
+/* ---------- idle */
+const PFKO={boot_id:"부팅",temperature:"온도",memory:"메모리",storage:"저장공간",gpu:"GPU",sensors:"센서 서비스",fastlio_duplicate:"FAST-LIO 중복"};
+function renderIdle(d,cs){ const ap=cs.approval||{}, sf=cs.safety||{}, X=cs.experiment||{}, mods=cs.modules||{}, job=cs.job, PF=cs.preflight||{};
+  const prot=(d.components&&Object.values(d.components).some(c=>c.alive));
+  const rows=[DEVICE?["이 기기의 제어 권한",CONTROL,CONTROL?(SESS.device_kind==="loopback"?"로봇 자체 — 제어 허용":`${SESS.device} — 허용된 Tailscale 기기`):`${SESS.device||"이 기기"} — 보기 전용 (제어 허용: ${(SESS.trusted_devices||[]).join(", ")||"없음"})`]
+              :["로그인",true,(SESS.user||"recs")+(SESS.kind==="legacy_token"?" (토큰)":"")],
+    (cs.authority||{}).kind==="STANDING"?["연구 실행 권한",ap.valid,ap.valid?`상시 허용 · 부팅과 무관 · 실험당 최대 ${Math.round(((cs.authority||{}).experiment_max_s||0)/60)}분`:reasonKo(ap.why)]
+      :["실험 실행 승인 (A)",ap.valid,ap.valid?`유효 · ${Math.floor((ap.remaining_s||0)/60)}분 남음 · 현재 부팅 전용`:("필요 — "+reasonKo(ap.why)+(CONTROL?". 아래 승인 카드에서 승인하십시오":". 허용된 태블릿에서 승인해야 합니다"))],
+    ["현재 로봇 · 실행 준비",PF.ok,PF.items?Object.entries(PF.items).filter(([k,v])=>!v.ok).map(([k,v])=>PFKO[k]+" "+(v.value!=null?JSON.stringify(v.value):"")+" ("+v.rule+")").join(" · ")||"센서·FAST-LIO 중복·저장공간 정상":"센서 상태 확인 중"],
+    ["온도·메모리",sf.start_ok,`${f(sf.max_temp_c,1)} °C (72 미만) · ${f(sf.mem_available_mb,0)} MB (4300 이상)`],
+    ["이전 실험 프로세스",!prot,prot?"아직 실행 중인 모듈이 있습니다":"없음"],
+    ["E6 팬틸트·IMX477 (이번 부팅)",!!(cs.e6_readiness||{}).ok,e6ReadyText(cs.e6_readiness)]];
+  const sg=cs.pending_start_gt;
+  if(cs.start_gt_required) rows.push(["시작 위치 GT (평가 전용)",!!sg,sg?`${sg.building} ${sg.floor}F · (${Math.round(sg.px)}, ${Math.round(sg.py)}) px · 방향 ${Math.round(sg.yaw_deg)}° — 위치추정에는 전달 안 됨`:"필요 — ‘실험 평가 → 정답 위치’에서 시작 위치와 방향을 지정"]);
+  $("checks").innerHTML=rows.map(([k,ok,v])=>`<div class="chk ${ok?"ok":"no"}"><span class="ico">${ok?"✓":"!"}</span><b>${esc(k)}</b><span class="st">${esc(v)}</span></div>`).join("");
+  if(!$("bld").options.length){$("bld").innerHTML=cs.buildings.map(b=>`<option>${b}</option>`).join(""); $("gtb").innerHTML=$("bld").innerHTML;}
+  const busy=job&&!job.done, needGt=cs.start_gt_required&&!cs.pending_start_gt, can=CONTROL&&ap.valid&&sf.start_ok&&PF.ok!==false&&!busy&&!prot&&!needGt;
+  $("b_start").disabled=!can;
+  const why=!CONTROL?"이 기기는 보기 전용입니다. 실험 제어는 허용된 태블릿에서만 할 수 있습니다.":((cs.authority||{}).kind==="STANDING"&&!ap.valid)?`연구 실행 권한이 ${(cs.authority||{}).state==="REVOKED"?"철회되었습니다 (로봇에서 ctl standing-grant 로만 다시 허용)":"일시 중지 상태입니다 — 아래에서 재개"}.`:(PF.ok===false?"자원 보호로 실행 대기 — "+Object.entries(PF.items||{}).filter(([k,v])=>!v.ok).map(([k])=>PFKO[k]).join(", "):null)||(!ap.valid?`실험 실행 승인(A)이 없습니다. 위의 승인 카드에서 범위를 확인하고 승인하십시오 (${DEVICE?"화면 접속과":"로그인과"} 별개, 현재 부팅 전용).`:(!sf.start_ok?"온도 또는 메모리 조건이 맞지 않습니다. 식은 뒤 다시 시도하십시오.":(busy?"다른 작업을 처리하는 중입니다.":(prot?"이전 실험의 모듈이 아직 실행 중입니다.":(needGt?"평가용 시작 위치(GT)를 먼저 지정하십시오. 이 값은 위치추정에 전달되지 않습니다.":"")))));
+  $("start_why").innerHTML=why?`<div class="note ${!ap.valid?"bad":"warn"}">${esc(why)}</div>`:`<div class="small mut">버튼을 누르면 모듈이 순서대로 켜지고 이 화면이 실시간 운용 화면으로 바뀝니다.</div>`;
+  if(job&&job.done&&job.result&&job.result.ok===false&&job.action==="start") $("start_why").innerHTML+=`<div class="note bad" style="margin-top:8px">시작 실패: ${esc(failKo(Object.values(mods).flatMap(m=>(m.exp&&m.exp.why)||[])).join(" · "))}</div>`;
+  renderApprovalCard(cs);
+  const ev=cs.last_evaluation, X_=cs.experiment||{};
+  if(X_.exp_id&&/ENDED/.test(X_.state||"")&&ev&&ev.e8&&!ev.e8.error){ const E=ev.e8, F=E.fix||{};
+    $("start_why").innerHTML+=`<div class="note" style="margin-top:8px"><b>직전 실험 ${esc(X_.exp_id)} E8 결과: ${esc(E.result_class||"")}</b>${E.replay?" (오프라인 재생)":""}<br>
+      ${E.fix?`최종 FIX ${esc(String(F.floor))}F · ${F.pose_m?`X ${f(F.pose_m[0],1)} · Y ${f(F.pose_m[1],1)} m`:""} · ${f(F.heading_deg,0)}° · ${esc(F.path||"")} · time-to-fix ${f(E.time_to_fix_s,0)} s`:"NO_FIX"}
+      · E2 9/9 ${E.e2_all_floors_s!=null?f(E.e2_all_floors_s,0)+" s":"미완료"} · E4 최초 확신 ${E.e4_first_confident_s!=null?f(E.e4_first_confident_s,0)+" s":"없음"} · 구조 E7 ${esc(E.e7_structure||"—")} · 의미 복구 ${esc(E.semantic_recovery||"—")}
+      · 정답 ${typeof E.ground_truth==="string"?esc(E.ground_truth):(E.ground_truth&&E.ground_truth.start_error_m_at_hyp_scale!=null?"시작 위치 오차 "+f(E.ground_truth.start_error_m_at_hyp_scale,2)+" m":"FIX 없음")}
+      <span class="small mut">(evaluation/${esc(X_.exp_id)}/E8_SUMMARY.md)</span></div>`; }
+  if(CONTROL&&X_.exp_id&&/ENDED/.test(X_.state||"")&&ev&&!ev.end_gt) $("start_why").innerHTML+=`<div class="note" style="margin-top:8px">직전 실험 ${esc(X_.exp_id)} 의 실제 종료 위치를 지정하면 평가가 완성됩니다.
+     <button class="sm" onclick="gtStartKind('end')">종료 위치 지정</button></div>`;
+  if(cs.start_gt_required&&!cs.pending_start_gt&&CONTROL) $("start_why").innerHTML+=`<div style="margin-top:8px"><button class="sm" onclick="gtStartKind('start')">시작 위치 지정하러 가기</button></div>`;
+  const le=d.last_experiment; $("last_exp").innerHTML=le?`<div class="chk" style="background:var(--hist-bg)"><span class="pill p-hist">지난 기록</span><span class="small">${esc(le.exp_id)} · ${esc((KO.exp[le.state]||[le.state])[0])} · ${esc(le.end_reason||"")}</span>
+    <button class="sm ghost" style="margin-left:auto" onclick="goTab('rec');openHist('${esc(le.exp_id)}')">열기</button></div>`:"";
+}
+function renderStandingCard(cs,el){ const au=cs.authority||{}, st=au.state, mx=Math.round((au.experiment_max_s||0)/60);
+  if(el.dataset.open==="1") return;
+  const opts=[10,20,30,45,60,90,120,180,240].map(m=>`<option ${m===mx?"selected":""} value="${m}">${m}분</option>`).join("");
+  el.innerHTML=`<div class="card"><h3>연구 실행 권한 — ${({ACTIVE:"상시 허용",SUSPENDED:"일시 중지",REVOKED:"철회됨"}[st]||esc(st))}</h3><div class="kv">
+    <div>등록 장치</div><div>${esc(((au.device||{}).name)||"—")}</div>
+    <div>실행 가능</div><div>${(au.modules||[]).map(m=>({fastlio:"FAST-LIO",lio2:"지도 축적",hub:"센서 허브",e2:"E2 (CPU)",e34:"E3/E4",observe:"SigLIP",rec:"기록",web:"웹"}[m]||m)).join(" · ")}</div>
+    <div>미허용</div><div>팬틸트·초점·IMX477·HOME·시리얼·이동/자세/정지 명령·E2 GPU·frame_probe</div>
+    <div>부팅·만료</div><div>부팅과 무관 · 만료 없음 (센서·자원은 시작 때마다 새로 검사)</div>
+    <div>실험당 최대 실행</div><div><select id="st_max" onchange="this.closest('.card').parentNode.dataset.open='1'">${opts}</select> <button class="sm" onclick="setExpMax()">적용</button></div></div>
+    <div style="display:flex;gap:8px;margin-top:8px">${st==="ACTIVE"?`<button class="sm" onclick="standingAct('standing_suspend')">일시 중지</button>`:""}
+    ${st==="SUSPENDED"?`<button class="sm" onclick="standingAct('standing_resume')">재개</button>`:""}
+    ${st!=="REVOKED"?`<button class="sm ghost" onclick="standingRevoke()">권한 철회</button>`:""}</div></div>`; }
+async function standingAct(a){ const [c,j]=await jpost("/api/ctl/"+a,{request_id:rid()}); toast(c===200?"연구 실행 권한: "+({ACTIVE:"재개",SUSPENDED:"일시 중지",REVOKED:"철회"}[j.state]||j.state):"실패: "+(j.why||c),c!==200); poll(); }
+async function standingRevoke(){ if(!confirm("연구 실행 권한을 철회합니까? 실행 중인 실험은 종료되고, 다시 허용하려면 로봇에서 ctl standing-grant 가 필요합니다.")) return;
+  const [c,j]=await jpost("/api/ctl/standing_revoke",{request_id:rid(),ack:true}); toast(c===200?"연구 실행 권한이 철회되었습니다":"실패: "+(j.why||c),c!==200); poll(); }
+async function setExpMax(){ const el=$("appr_card"); const [c,j]=await jpost("/api/ctl/standing_exp_max",{request_id:rid(),minutes:+$("st_max").value});
+  el.dataset.open="0"; toast(c===200?`실험당 최대 ${Math.round(j.experiment_max_s/60)}분`:"실패: "+(j.why||c),c!==200); poll(); }
+function renderApprovalCard(cs){ const ap=cs.approval||{}, w=cs.web_approval||{}, el=$("appr_card");
+  if(CONTROL&&(cs.authority||{}).kind==="STANDING"){ el.classList.remove("hide"); renderStandingCard(cs,el); return; }
+  if(!CONTROL||!w.modules){ el.classList.add("hide"); return; }
+  el.classList.remove("hide");
+  if(ap.valid){ el.innerHTML=`<div class="chk" style="background:var(--s2)"><span class="small">승인 기록: ${esc(w.recorded_by||"—")}</span><button class="sm ghost" style="margin-left:auto" onclick="revokeAppr()">승인 취소</button></div>`; return; }
+  if(el.dataset.open==="1") return;                        /* keep the operator's ticks while the form is open */
+  const lim=w.limits||{};
+  el.innerHTML=`<div class="card" style="border-color:var(--warn)"><h3>실험 실행 승인 (A) — 이 부팅에서 한 번</h3>
+    <div class="kv small"><div>부팅</div><div class="mono">${esc(w.boot_id)}</div>
+    <div>모듈 · 최대 실행</div><div>${w.modules.map(m=>`${m} ${lim[m]&&lim[m].max_run_s?lim[m].max_run_s+"초":"(승인 기간 내)"}`).join(" · ")}</div>
+    <div>방식</div><div>E2 CPU 전용 · SigLIP GPU 1개 SHADOW · 로봇 이동은 조이스틱</div>
+    <div>자원 보호</div><div>시작 72°C 미만·4300MB 이상, 80°C 또는 2500MB 미만이면 중단</div>
+    <div>승인하지 않음</div><div>팬틸트·초점·IMX477·HOME·frame_probe·e2_gpu·Go2 이동/정지 명령·자동 연장</div></div>
+    <div class="opts" style="margin-top:8px"><label class="small mut">유효 시간</label><select id="appr_min"><option>30</option><option>45</option><option selected>60</option></select><span class="small mut">분 (재부팅하면 무효)</span></div>
+    <label class="switch" style="width:100%"><input type="checkbox" id="appr_ack" onchange="$('b_appr').disabled=!this.checked"> 위 범위를 확인했고, 이 부팅에서 실험 실행을 승인합니다</label>
+    <button id="b_appr" class="primary" style="width:100%;margin-top:8px" disabled onclick="grantAppr()">승인 기록</button></div>`;
+  el.dataset.open="1"; }
+async function grantAppr(){ const w=(CS||{}).web_approval||{};
+  const [c,j]=await jpost("/api/ctl/approval_grant",{request_id:rid(),boot_id:w.boot_id,modules:w.modules,minutes:+$("appr_min").value,ack:$("appr_ack").checked});
+  $("appr_card").dataset.open="0"; toast(c===200?"실행 승인이 기록되었습니다":"승인 실패: "+(j.why||c),c!==200); poll(); }
+async function revokeAppr(){ if(!confirm("현재 실행 승인(A)을 취소합니까? 실행 중인 실험이 있으면 종료됩니다.")) return;
+  const [c,j]=await jpost("/api/ctl/approval_revoke",{request_id:rid()}); toast(c===200?"승인이 취소되었습니다":"실패: "+(j.why||c),c!==200); poll(); }
+function gtStartKind(k){ goTab("eval"); GTK=k; $("gtk").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===k));
+  if(k==="start"||k==="end") $("gtyaw").checked=true; $("gt_msg").textContent=k==="start"?"시작 위치를 탭한 뒤, 로봇이 바라보는 방향을 한 번 더 탭하십시오":"실제 종료 위치를 탭하고 방향도 지정하십시오"; }
+function e6ReadyText(R){ if(!R) return "확인 중"; const bad=(R.items||[]).filter(i=>!i.ok).map(i=>i.ko);
+  const box=R.effective_box?` · 조준 가능 팬 ${R.effective_box.pan[0]}–${R.effective_box.pan[1]}° 틸트 ${R.effective_box.tilt[0]}–${R.effective_box.tilt[1]}°`:"";
+  return R.ok?`준비됨 (MANUAL_FIXED_NO_MOTOR)${box}`:`꺼진 채 시작됨 — ${bad.join(" · ")}${box}`; }
+function ptcSync(){ const on=$("ptc_use").checked; $("ptc_acks").classList.toggle("hide",!on); }
+function ptcConsent(){ if(!$("ptc_use")||!$("ptc_use").checked) return null; const acks={};
+  document.querySelectorAll(".ptc_ack").forEach(el=>{ acks[el.dataset.k]=el.checked; });
+  return {use:true,acks:acks,vlm:$("ptc_vlm").checked}; }
+function startExp(){
+  const R=(CS||{}).e6_readiness||{}, PC=ptcConsent();
+  if(PC&&Object.values(PC.acks).some(v=>!v)){ alert("팬틸트 사용 동의: 확인 항목을 모두 체크해 주세요 (또는 '팬틸트 카메라 사용'을 끄세요)."); return; }
+  const bad=(R.items||[]).filter(i=>!i.ok&&!(PC&&(i.key==="approval_b"||i.key==="focus_mode")));   /* consent supplies B + manual focus */
+  if(bad.length&&!confirm((PC?"팬틸트 사용 동의는 했지만 장치 조건이 맞지 않아 E6가 꺼질 수 있습니다.\n":"E6(팬틸트·IMX477)가 꺼진 채 시작됩니다.\n")+bad.map(i=>"· "+i.ko).join("\n")+"\n\n계속합니까?")) return;
+  if(!PC&&!confirm("팬틸트 동의 없이 시작합니다. 구조 기반 추정은 계속하고, 표지판이 필요해지면 화면에 '하드웨어 사용 동의 필요'를 표시합니다.\n팬틸트를 쓰려면 '이번 실험에서 팬틸트 카메라 사용'을 체크하세요. 계속합니까?")) return;
+  const inp=$("inp").value;
+  if(inp==="body"&&!confirm("FAST-LIO 입력: Go2 본체 IMU\n본체 IMU → 브리지 → FAST-LIO(보정 후보, 병진 미관측) → L1 좌표 어댑터 → 기존 E2~E8.\nIMU 브리지가 READY가 아니면 어댑터가 출력을 막아 E2에 새 표본이 들어가지 않습니다. 계속합니까?")) return;
+  const body={building:$("bld").value,siglip:true,input:inp,e6_mode:$("e6mode").value}; if(PC) body.pantilt_consent=PC;
+  act("start",body); }
+function inpStatus(a,b){ const el=$("inp_status"); if(!el||!b) return; const F=b.fastlio_input||{}, X=b.experiment||{}, L=(a&&a.live2)||{};
+  const mode=(X.input||F.input||"l1")==="body"?"Go2 본체 IMU (어댑터)":"L1 IMU";
+  let t="FAST-LIO 입력: "+mode+(F.alive?" · 실행 중":" · 정지");
+  if(F.input==="body"){ const B=F.bridge||{}, D=F.adapter||{};
+    t+=" · IMU 브리지 "+(B.health||"—")+" "+(B.publish_hz??"—")+" Hz (공백 "+(B.gaps??"—")+", "+(B.age_s??"—")+" s 전)"+
+       " · 어댑터 "+(D.gate_ok?"통과":"차단")+" odom "+(D.odom_out??"—")+" / 점군 "+(D.cloud_out??"—")+(D.cloud_gated?" (차단 "+D.cloud_gated+")":""); }
+  const e2=L.e2||{}, e3=L.e3||{}, e4=L.e4||{}, e7=L.e7||{}, e5=(a&&a.e5)||{}, sp=L.structure_path||{};
+  const fixT=(e7.global_decision==="GLOBAL_CONFIRMED"&&e7.written_wall&&X.created_wall)?" ("+Math.round(e7.written_wall-X.created_wall)+" s)":"";
+  if(X.created_wall&&X.state&&X.state!=="ENDED") t+=" · 경과 "+Math.round(Date.now()/1000-X.created_wall)+" s"+
+     " · E2 후보 "+((e2.top||[]).length)+" · E3 활성 "+(((e3.hypotheses||[]).filter(h=>h.status==="ACTIVE")).length)+" · E4 "+(e4.state||"—")+
+     " · E5 "+(e5.status||"—")+" · E6 "+(((L.e6_mode||{}).mode)||"—")+(sp.status?" · 구조검증 "+sp.status:"")+" · E7 "+(e7.global_decision||"—")+fixT;
+  el.textContent=t; }
+function endExp(){ if(confirm("실험을 종료하고 기록을 저장합니까?\nLIVE2 가 켠 프로세스만 정지합니다. 로봇 정지는 조이스틱으로 하십시오.")) act("end"); }
+async function act(a,extra){ const [c,j]=await jpost("/api/ctl/"+a,Object.assign({request_id:rid()},extra||{}));
+  const lab={start:"실험 시작",pause:"분석 일시정지",resume:"분석 재개",end:"실험 종료"}[a]||a;
+  if(c>=400||c===0) toast(lab+": "+reasonKo(j.why||c),true); else toast(lab+(c===202?" — 처리 중…":" — 완료")); poll(); }
+
+/* ---------- live */
+const imgKey={};
+function setImg(img,url,age,key){ if(age==null){img.removeAttribute("src"); imgKey[key]=null; return false;}
+  const k=Math.floor(Date.now()/1000-age); if(imgKey[key]!==k){imgKey[key]=k; const t0=performance.now(); img.onload=()=>{tele.push({kind:key,fetch_ms:Math.round(performance.now()-t0),age_ms:Math.round(age*1000)}); if(key==="cam"&&CAM==="sig") drawBoxes($("cam_cv"),img,(S.e5||{}).regions||[]); if(key==="sem") drawBoxes($("sem_cv"),img,(S.e5||{}).regions||[]);}; img.src=url+"?t="+k;} return true; }
+function drawBoxes(cv,img,regs){ const w=img.naturalWidth,h=img.naturalHeight; if(!w) return; cv.width=w; cv.height=h; const g=cv.getContext("2d"); g.clearRect(0,0,w,h);
+  regs.forEach((r,i)=>{const b=r.box||[]; if(b.length<4) return; const good=/CANDIDATE|CONFIRM|ACCEPT/.test(r.display||""); g.lineWidth=Math.max(2,w/320);
+    g.strokeStyle=good?"#2fbf74":"#9aa4b1"; g.strokeRect(b[0],b[1],b[2]-b[0],b[3]-b[1]); g.font=`${Math.max(13,w/50)}px sans-serif`; g.fillStyle=good?"#2fbf74":"#c3cbd5";
+    g.fillText(`${r.sim!=null?r.sim.toFixed(3):""}`,b[0]+3,Math.max(14,b[1]-4));}); }
+function semState(d){ const E5=d.e5||{}, KP=d.siglip||{}, SGT=E5.live2_siglip_gate||{}, E4=((d.live2||{}).e4)||{}, SU=E5.stop_request_ui||{};
+  const lastWhy=(SGT.last||{}).why||"", infer=(SGT.last||{}).infer, regs=E5.regions||[];
+  if(SU.active){ const it=(SU.items||[]).slice(-1)[0]||{}; return ["stop","표지판 후보가 발견되었습니다. 로봇을 정지해 주세요.",`의미 후보 ${it.sim!=null?"유사도 "+it.sim.toFixed(3):""}${it.depth_m!=null?" · 약 "+it.depth_m.toFixed(1)+" m":""}${it.basis==="VISUAL_VERIFIED_NO_GEOMETRY"?" · 영상 검증 (좌표 계약 없음)":""} — 로봇은 조이스틱으로 정지`]; }
+  if((SU.confirmed_recent||[]).length){ const it=SU.confirmed_recent.slice(-1)[0]; const md=(((d.live2||{}).e6_mode)||{}); return ["info","정지 확인됨 — 의미 관측 대기",`${esc(it.observation_id||"")} · ${f(it.since_confirm_s,0)} s 전 · ${esc(md.ko||"E6 하드웨어는 승인 B·정밀 관측 모드에서만 동작")}`]; }
+  if(KP.keeper==="PAUSED_THERMAL"||/^LIVE2_THERMAL_DUTY|^THERMAL_DUTY/.test(lastWhy)) return ["warn","열 보호로 의미 관측 일시정지",esc(KP.why||lastWhy)];
+  if(E5.status==="DATA_UNAVAILABLE"||!SGT.mode) return ["neu","SigLIP 꺼짐",""];
+  if(E4.state==="AMBIGUOUS"&&!infer) return ["warn","모호성 발생 — 의미 관측 대기",esc(lastWhy)];
+  if(!infer) return ["neu","의미 관측 대기",esc(lastWhy)];
+  if(regs.some(r=>(r.sim||0)>=0.09&&/CANDIDATE|VERIF|STOP/.test(r.display||""))) return ["info","의미 후보 발견","표지판 후보를 확인하는 중"];
+  if(regs.some(r=>(r.sim||0)>=0.078)) return ["info","표지판 후보 탐색 중",`영역 ${regs.length}개`];
+  if(regs.length) return ["neu","관측 대상 없음","표지판으로 볼 영역이 없습니다"];
+  return ["info","SigLIP 활성화",esc(lastWhy)]; }
+/* FAST-LIO note. Field run 2026-10-21: a mid-run rate drop (LOW_RATE 5.8 Hz, odometry still arriving) was shown as the start-up
+   "waiting for FAST-LIO, do not move" text. Start-up, slow-but-alive and really-interrupted are now told apart; the system never
+   stops the robot, so an interruption asks the operator to stop with the joystick. */
+const LIO_KO={STALE:"위치 입력 끊김",ODOM_STALE:"위치 입력 끊김",NO_ODOMETRY:"위치 입력 없음",LOW_RATE:"처리 속도 저하",BELOW_BASELINE_95PCT:"기준 대비 속도 저하",DATA_UNAVAILABLE:"상태 정보 없음"};
+function lioNote(L,o,s1,moved){ const N=(k,t)=>`<div class="note ${k}" style="margin-bottom:10px">${t}</div>`;
+  const started=s1&&((o.n||0)>0)&&moved, cut=["STALE","ODOM_STALE","NO_ODOMETRY"].includes(L.status)||(o.last_rx_age_s!=null&&o.last_rx_age_s>=0.5);
+  if(!started) return N("warn","FAST-LIO 위치 입력을 기다립니다. 초기화가 끝날 때까지 로봇을 움직이지 마십시오.");
+  if(cut) return N("bad",`<b>FAST-LIO 위치 입력 끊김</b> (마지막 수신 ${f(o.last_rx_age_s,1)} s 전) — 즉시 조이스틱으로 정지하십시오. 시스템은 로봇을 멈추지 않습니다. 이 구간의 위치추정은 신뢰할 수 없습니다.`);
+  if(["LOW_RATE","BELOW_BASELINE_95PCT"].includes(L.status)) return N("warn",`FAST-LIO 처리 속도 저하 ${f(o.hz_10s,1)} Hz (8 Hz 미만) — 위치 입력은 계속 들어오고 있습니다. 속도를 줄이십시오. "위치 입력 끊김"이 뜨면 즉시 정지하십시오.`);
+  return N("warn",`FAST-LIO 상태 ${esc(LIO_KO[L.status]||L.status||"—")} — 속도를 줄이고 상태를 확인하십시오.`); }
+/* STOP alert (2026-10-21 EXP1: a STOP_REQUEST went unnoticed). One vibration + one short beep per NEW observation_id. Browsers
+   allow audio only after a tap on the page (unlocked on the first tap); nothing is sent to the robot. */
+const STOP_SEEN=new Set(); let AUDIO=null;
+document.addEventListener("pointerdown",()=>{ try{ if(!AUDIO) AUDIO=new (window.AudioContext||window.webkitAudioContext)(); if(AUDIO.state==="suspended") AUDIO.resume(); }catch(e){} },{passive:true});
+function stopAlert(SU){ const items=(SU&&SU.active&&SU.items)||[]; let fresh=false;
+  for(const it of items){ const k=it.observation_id||(it.kind+":"+it.mono); if(!STOP_SEEN.has(k)){ STOP_SEEN.add(k); fresh=true; } }
+  if(!fresh) return false;
+  try{ if(navigator.vibrate) navigator.vibrate([300,120,300]); }catch(e){}
+  try{ if(AUDIO&&AUDIO.state==="running"){ const o=AUDIO.createOscillator(), g=AUDIO.createGain(); o.frequency.value=880; g.gain.value=0.25;
+       o.connect(g); g.connect(AUDIO.destination); o.start(); o.stop(AUDIO.currentTime+0.6); } }catch(e){}
+  return true; }
+/* Observation flow after a STOP (2026-10-22: STOP was heard, "when may I drive on?" was not shown). Server state from
+   live2/obs_flow.py; a pending safety-guard condition always turns it into HOLD_ERROR here. One sound per (observation, state):
+   RESUME_READY = two short rising tones (different from the STOP beep), HOLD_ERROR = one low tone. Nothing is sent to the robot. */
+const FLOW_SEEN=new Set((()=>{ try{ return JSON.parse(sessionStorage.getItem("flow_seen")||"[]"); }catch(e){ return []; } })());
+function flowState(d,cs){ const F=((d.e5||{}).obs_flow)||null; if(!F||!F.state) return null;
+  const pend=((cs&&cs.safety_guard&&cs.safety_guard.pending)||[]).length>0;
+  if(pend&&!["STOP_CLEARED","STOP_REQUESTED"].includes(F.state)) return Object.assign({},F,{state:"HOLD_ERROR",why:"안전 감시 조건 대기 중"});
+  /* 2026-10-30: never show "E6 조준·촬영" while nothing can move — E6 bridge off (no approval B; 10-30 field runs) or MANUAL_SETTLE
+     still waiting for the operator's approval */
+  const G=((cs&&cs.e6_settle)||{}).gate||{}, e6on=!!(((cs&&cs.modules)||{}).e6||{}).alive;
+  if(["E6_OBSERVING","AIMING"].includes(F.state)&&G.state==="WAITING_FOR_SETTLE_APPROVAL") return Object.assign({},F,{state:"SETTLE_WAIT",why:"운영자 승인 전 — 팬틸트 움직이지 않음"});
+  if(["E6_OBSERVING","AIMING"].includes(F.state)&&!e6on) return Object.assign({},F,{state:"E6_OFF",why:"E6 브리지 꺼짐 (승인 B 없음 또는 미실행) — 팬틸트·촬영 없음"});
+  return F; }
+function tone(seq){ try{ if(!(AUDIO&&AUDIO.state==="running")) return; let t=AUDIO.currentTime;
+  for(const [hz,dur] of seq){ const o=AUDIO.createOscillator(), g=AUDIO.createGain(); o.frequency.value=hz; g.gain.value=0.22;
+    o.connect(g); g.connect(AUDIO.destination); o.start(t); o.stop(t+dur); t+=dur+0.05; } }catch(e){} }
+function flowAlert(F){ if(!F||!["RESUME_READY","HOLD_ERROR"].includes(F.state)) return null; const k=F.observation_id+":"+F.state;
+  if(FLOW_SEEN.has(k)) return null; FLOW_SEEN.add(k); try{ sessionStorage.setItem("flow_seen",JSON.stringify([...FLOW_SEEN].slice(-60))); }catch(e){}
+  if(F.state==="RESUME_READY") tone([[660,0.12],[990,0.16]]); else { tone([[220,0.5]]); try{ if(navigator.vibrate) navigator.vibrate([600]); }catch(e){} }
+  return F.state; }
+const FLOW_KO={STOP_CONFIRMED:["info","정지 확인됨 — 정지 유지"],E6_OBSERVING:["warn","정밀 관측 중 — 정지 유지 (E6 조준·촬영·판독)"],
+  AIMING:["warn","팬틸트 자동 조준 중 — 정지 유지"],WAIT_MANUAL_FOCUS:["warn","수동 초점 조절 — 렌즈 초점링을 맞춘 뒤 [초점 조절 완료 및 촬영]"],
+  CAPTURING:["warn","고해상도 촬영·저장 중 — 정지 유지"],RETURNING_HOME:["warn","팬틸트 HOME 복귀 중 — 정지 유지"],
+  REPOSITION_NEEDED:["warn","조준 범위 밖 — 안내대로 조이스틱으로 옮긴 뒤 [재조준] 또는 [건너뛰기]"],OBSERVATION_COMPLETE:["info","관측 완료"],RESUME_READY:["ok","촬영이 완료되었습니다. 로봇 이동을 재개할 수 있습니다. 판독은 이동 중에 계속됩니다."],
+  HOLD_ERROR:["stop","정지 유지 — 확인 필요"],SETTLE_WAIT:["warn","운영자 승인 대기 — 정지 유지 (팬틸트 아직 움직이지 않음)"],
+  E6_OFF:["warn","E6 하드웨어 승인 없음 — 구동 차단 (팬틸트·촬영 없음, 정지 요청만 기록)"]};
+function flowView(F){ if(!F||!FLOW_KO[F.state]) return null; const [k,t]=FLOW_KO[F.state];
+  return [k==="ok"?"info":k,t,`${esc(F.observation_id||"")} · ${esc(F.why||"")}`]; }
+/* ---------- E8 flow steps + E6 manual focus (2026-10-26). Every step comes from backend state (obs_flow, e6_manual.json,
+   e8_pair_state.json, E7); a button press only queues an operator decision — success is shown only when the bridge reports it. */
+function soundTest(){ try{ if(!AUDIO) AUDIO=new (window.AudioContext||window.webkitAudioContext)(); if(AUDIO.state==="suspended") AUDIO.resume(); }catch(e){}
+  setTimeout(()=>{ tone([[880,0.25]]); setTimeout(()=>tone([[660,0.12],[990,0.16]]),600); const ok=AUDIO&&AUDIO.state==="running";
+    $("b_snd").textContent=ok?"🔊 알림음 켜짐 (정지음·재출발음)":"🔇 알림음 막힘 — 다시 누르기"; },150); }
+const FSTEPS=[["search","후보 탐색"],["sig","SigLIP 단서"],["stopreq","정지 요청"],["stopok","정지 확인"],["aim","자동 조준"],["focus","수동 초점"],
+  ["cap","고해상도 촬영"],["home","HOME 복귀"],["resume","재출발 가능"],["read","OCR·VLM"],["prov","1차 예상 위치"],["sig2","2차 단서 탐색"],
+  ["obs2","2차 관측"],["fuse","의미정보 융합"],["e7","E7 검증"],["fix","최종 위치"]];
+function flowStage(d,FL){ const P=((d.live2||{}).e8_pair)||{}, ps=P.state||"", n=(P.observations||[]).length, ev=P.evaluation||{};
+  const fs=FL&&FL.state, m={REPOSITION_NEEDED:"aim",STOP_REQUESTED:"stopreq",STOP_CONFIRMED:"stopok",SETTLE_WAIT:"stopok",E6_OFF:"stopok",AIMING:"aim",WAIT_MANUAL_FOCUS:"focus",CAPTURING:"cap",CAPTURE_REVIEW:"cap",RETURNING_HOME:"home",E6_OBSERVING:"aim"};
+  if(ps==="GLOBAL_FIX") return ["fix",false]; if(ps==="E7_VERIFYING") return ["e7",false];
+  if(["PAIR_READING","PAIR_CONSISTENCY_CHECK","REGION_CANDIDATE_READY"].includes(ps)&&!(fs&&m[fs])) return ["fuse",false];
+  if(fs==="HOLD_ERROR") return [n>=1?"obs2":"stopok",true];
+  if(fs&&m[fs]) return [n>=1&&!["home"].includes(m[fs])?"obs2":m[fs],false];
+  if(ps==="MORE_OBSERVATION_REQUIRED"||ps==="NO_FIX"||ps==="CANDIDATE_MISSING") return ["sig2",ps!=="MORE_OBSERVATION_REQUIRED"];
+  if(n===1){ const o=(P.observations||[])[0]||{}; if(!o.read) return ["read",false]; if(ev.verdict==="PROVISIONAL"&&ps.endsWith("_SEARCHING")) return ["sig2",false]; return ["prov",false]; }
+  if(fs==="RESUME_READY") return ["resume",false];
+  const SU=((d.e5||{}).stop_request_ui)||{}; if(SU.active) return ["sig",false];
+  return ["search",false]; }
+function renderFlowSteps(d,FL){ const [cur,bad]=flowStage(d,FL), i=FSTEPS.findIndex(x=>x[0]===cur);
+  $("flow_steps").innerHTML=FSTEPS.map(([k,t],j)=>`<span class="${j<i?"done":(j===i?(bad?"bad":"now"):"")}">${t}</span>`).join("");
+  const P=((d.live2||{}).e8_pair)||null; if(!P){ $("e8_brief").innerHTML=""; return; }
+  const ev=P.evaluation||{}, obs=(P.observations&&P.observations.length?P.observations:((P.last_closed||{}).observations||[]));
+  const one=(o,i)=>{ const r=(ev.per_observation||[]).find(x=>x.observation_id===o.observation_id)||{}, pv=r.provisional;
+    const ocr=(o.ocr_lines||[]).map(x=>esc(x[0])).join(" ")||(o.read?"없음":"판독 중");
+    return `${i+1}차 OCR <b>${ocr}</b>${pv?` → <span style="color:#d69e2e">예상 ${pv.floor}F ${esc(pv.room||"")}</span> (미확정)`:""}`; };
+  const E=P.e7||(P.last_closed||{}).e7;
+  $("e8_brief").innerHTML=[obs.map(one).join(" · "),(ev.verdict&&ev.verdict!=="PROVISIONAL")?`결합 ${esc(ev.verdict)}`:"",
+    E?(E.global_decision==="GLOBAL_CONFIRMED"?`<span style="color:#2f855a"><b>E7 FIX</b></span>`:`<span style="color:#c53030">E7 ${esc(E.global_decision||"")}</span>`):""].filter(Boolean).join(" · "); }
+/* 2026-10-31 의미정보 측정 결과 (1차~4차): per observation of the current / last closed E8 group — reading, map match, floor,
+   the consistent hypothesis' position / heading NOW (E3; propagated by FAST-LIO, never averaged), usability; then the pair verdict,
+   observations still needed (min 2, max 4), E7. Nothing here is a FIX unless E7 says GLOBAL_CONFIRMED. */
+function renderSemCard(d){ const el=$("sem_card"); if(!el) return; const L2=(d||{}).live2||{}, P=L2.e8_pair||null;
+  if(!P){ el.innerHTML=""; return; } const closed=P.last_closed||{}, ev=P.evaluation||closed.evaluation||{};
+  const obs=(P.observations&&P.observations.length?P.observations:(closed.observations||[]));
+  if(!obs.length){ el.innerHTML=""; return; }
+  const H=(((L2.e3||{}).hypotheses)||[]); const hy=id=>H.find(h=>h.id===id);
+  const rows=obs.slice(0,4).map((o,i)=>{ const r=(ev.per_observation||[]).find(x=>x.observation_id===o.observation_id)||{}, pv=r.provisional, h=pv&&hy(pv.hypothesis);
+    const ocr=(o.ocr_lines||[]).map(x=>esc(x[0])).join(" ")||(o.read?"<b>없음</b>":"판독 중…");
+    const v=o.vlm, rv=((o.reading||{}).vlm)||{}, ocrs=(o.reading||{}).ocr_s;
+    const ocrRoom=(r.labels||[]).length?String(r.labels[0][0]):"", vr=v&&typeof v==="object"?String(v.room_number||""):"";
+    const vtxt=v?(typeof v==="object"?(vr?`${esc(vr)} ${ocrRoom?(ocrRoom===vr?'<b style="color:#2f855a">OCR과 일치</b>':'<b style="color:#c53030">OCR과 다름 — 확정 안 함</b>'):'(VLM 단독 — 확정 안 함)'}`:esc(v.status||v.sign_type||"번호 없음")):esc(String(v)))
+      :rv.state==="QUEUED"?"대기 중":rv.state==="ASKING"?"판독 중"
+      :rv.state==="NOT_NEEDED"?"실행 안 함 (OCR 이 호실 번호를 읽음 — VLM 결과 아님)"
+      :rv.state==="ASKED"?`판독함 (${f(rv.sec,1)} s) — 번호 없음`:rv.state==="ERROR"?("오류 — "+esc(rv.error||"")):["NOT_ADMITTED","NOT_ADMITTED_RESOURCE"].includes(rv.state)?("실행 안 됨 — "+(/endpoint down/.test(rv.why||"")?"VLM 서버 꺼짐":esc(rv.why||rv.reason||""))):"실행 안 함";
+    const lab=(r.labels||[]).slice(0,3).map(a=>`${esc(a[0])} ${f(a[1],2)}`).join(", ")||"—";
+    const pos=h&&h.pose_m?`${h.floor}F · X ${f(h.pose_m[0],1)} · Y ${f(h.pose_m[1],1)} m · ${f(h.heading_deg,0)}° (${esc(h.id)}, E3 현재)`:(pv?`${pv.floor}F (가설 ${esc(pv.hypothesis||"")} 없음)`:"—");
+    return `<tr><td><b>${i+1}차</b></td><td>${ocr}${ocrs!=null?` <span class="small mut">(OCR ${f(ocrs,0)} s)</span>`:""}<br><span class="small mut">VLM ${vtxt}</span></td><td>${lab}</td>
+      <td>${pv?`${pv.floor}F ${esc(pv.room||"")} · 표지판-가설 ${f(pv.dist_m,1)} m`:"지도 일치 없음"}</td><td>${pos}</td>
+      <td>${r.usable===true?'<span class="chip ok">독립 관측</span>':r.usable===false?`<span class="chip bad">미사용</span> <span class="small">${esc(r.why_not||"")}</span>`:'<span class="chip neu">대기</span>'}</td></tr>`; }).join("");
+  const n=obs.filter((o,i)=>((ev.per_observation||[]).find(x=>x.observation_id===o.observation_id)||{}).usable).length;
+  const E=P.e7||closed.e7, need=Math.max(0,2-n), left=Math.max(0,4-obs.length);
+  const verdictKo={REGION_CANDIDATE_READY:"관측 일관 — E7 LiDAR 검증 요청",CANDIDATE_MISSING:"판독은 한 층에 맞지만 그 자리에 LiDAR 후보 없음 → 지역 E2 재탐색",
+    MORE_OBSERVATION_REQUIRED:"추가 관측 필요",NO_FIX:"4회 내 확정 실패 (UNRESOLVED_AFTER_4_OBSERVATIONS)",GLOBAL_FIX:"FIX"}[P.state||ev.verdict]||esc(P.state||ev.verdict||"");
+  el.innerHTML=`<div class="card" style="margin-bottom:10px"><h3 style="margin:0 0 6px">의미정보 측정 결과 <span class="small mut">${esc(P.group_id||closed.group_id||"")}</span></h3>
+    <table class="small" style="width:100%"><tr><th></th><th>OCR / VLM</th><th>인식 라벨</th><th>의미지도 일치</th><th>추정 위치·방향 (잠정)</th><th>상태</th></tr>${rows}</table>
+    <div class="small" style="margin-top:6px">일관성: <b>${verdictKo}</b> · 독립 관측 ${n}개 (최소 2 · 최대 4)${need?` · 최소 ${need}회 더 필요`:""}${left&&P.state!=="GLOBAL_FIX"?` · 남은 관측 기회 ${left}회`:""}
+      · E7: ${E?(E.global_decision==="GLOBAL_CONFIRMED"?'<b style="color:#2f855a">최종 FIX — E7 검증 완료</b>':esc(E.global_decision||"")+" — "+esc((E.why||"").slice(0,120))):"아직"}</div>
+    <div class="small mut">${esc(ev.why||P.why||"")}</div></div>`; }
+const E6M={on:false,oid:null,roi:null,roiMode:false,drag:null,m:null,busy:0,loop:false,fage:null,fseq:null,lat:null,lastImg:0,ask:false,zoom:false,mt:0};
+const E6M_PH={WAIT_BODY_SETTLE:"로봇 정지 확인 — 카메라 흔들림 안정화 중",WAIT_AIM_SETTLE:"조준 후 카메라 안정화 중",AIMING:"팬틸트 자동 조준 중",AIM_READY:"조준 완료",WAIT_MANUAL_FOCUS:"수동 초점 대기",CAPTURE_REQUESTED:"촬영 요청됨",CAPTURING:"고해상도 촬영 중",
+  CAPTURE_SAVED:"저장 확인됨",CAPTURE_REVIEW:"촬영 사진 확인 대기 — 판독 진행 또는 다시 촬영",RETURNING_HOME:"HOME 복귀 중",HOME_CONFIRMED:"HOME 복귀 확인",CAPTURE_FAILED:"촬영·저장 실패 — 다시 촬영 또는 취소",
+  HOME_NOT_CONFIRMED:"HOME 미확인 — 재출발 금지",USER_CANCELLED:"촬영 취소됨",USER_ABORTED:"관측 중단됨",ROBOT_MOVED:"로봇 이동 — 관측 취소",
+  MANUAL_TIMEOUT:"시간 초과 — 관측 취소",AIM_FAILED:"조준 실패 — 이동 재개 가능",REPOSITION_NEEDED:"조준 범위 밖 — 재배치 안내",DEVICE_ERROR:"장치 오류 — 헤드 점검"};
+const E6M_ACTIVE=["REPOSITION_NEEDED","WAIT_BODY_SETTLE","WAIT_AIM_SETTLE","AIMING","AIM_READY","WAIT_MANUAL_FOCUS","CAPTURE_REQUESTED","CAPTURING","CAPTURE_SAVED","CAPTURE_REVIEW","RETURNING_HOME","CAPTURE_FAILED"];
+const E6M_WAIT=["AIM_READY","WAIT_MANUAL_FOCUS","CAPTURE_FAILED"];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function e6mFrame(){ try{ const r=await fetch("/img/e6live.jpg?w="+(E6M.zoom?1600:960)+"&t="+Date.now(),{cache:"no-store",credentials:"same-origin"});
+    if(!r.ok) throw new Error(String(r.status)); const t0=performance.now(); const b=await r.blob(); const img=$("e6m_img"), old=img.src;
+    img.onload=e6mZoomDraw; img.src=URL.createObjectURL(b); if(old&&old.startsWith("blob:")) URL.revokeObjectURL(old);
+    E6M.fage=parseFloat(r.headers.get("X-Frame-Age-S")); E6M.fseq=r.headers.get("X-Seq"); E6M.lastImg=Date.now(); E6M.lat=Math.round(performance.now()-t0); E6M.err=null;
+  }catch(e){ E6M.err=String(e.message||e); } }
+async function e6mLoop(){ if(E6M.loop) return; E6M.loop=true;
+  while(E6M.on&&!document.hidden){ await e6mFrame();
+    if(Date.now()-E6M.mt>700){ E6M.mt=Date.now(); const q=E6M.roi?"?roi="+encodeURIComponent(E6M.roi.join(",")):""; const m=await jget("/api/e6/metrics"+q); if(m) { E6M.m=m; e6mDraw(); e6mKv(); e6mQ(); } }
+    await sleep(E6M.err?800:90); }
+  E6M.loop=false; }
+function e6mDraw(){ const cv=$("e6m_cv"), g=cv.getContext("2d"); g.clearRect(0,0,1280,720); const m=E6M.m||{};
+  const box=(r,c,dash)=>{ if(!r) return; g.setLineDash(dash||[]); g.strokeStyle=c; g.lineWidth=4; g.strokeRect(r[0],r[1],r[2]-r[0],r[3]-r[1]); };
+  if(m.auto_roi&&m.auto_roi_source==="SIGN_COMPONENT") box(m.auto_roi,"#4fd1c5",[14,10]);
+  box(E6M.drag||E6M.roi||(m.roi_source!=="OPERATOR_SELECTED"?m.roi:null),E6M.roi||E6M.drag?"#f6e05e":"#90cdf4");
+  g.setLineDash([]); g.strokeStyle="#ff9f43"; g.lineWidth=2; g.beginPath(); g.moveTo(620,360); g.lineTo(660,360); g.moveTo(640,340); g.lineTo(640,380); g.stroke(); }
+/* 2026-11-01: zoom of the sign ROI (operator-selected first, else the automatic one) from the live view; numbers on that ROI.
+   Digital zoom only — it shows the strokes larger, it does not add optical resolution. */
+function e6mRoiNow(){ const m=E6M.m||{}; return E6M.roi||(m.roi_source==="SIGN_COMPONENT"?m.auto_roi||m.roi:null)||m.roi||null; }
+function e6mZoomDraw(){ const img=$("e6m_img"), cv=$("e6m_zoom"); if(!img||!cv||!img.naturalWidth) return; const r=e6mRoiNow(); const g=cv.getContext("2d");
+  g.fillStyle="#111"; g.fillRect(0,0,cv.width,cv.height); if(!r){ $("e6m_zcap").textContent="표지판 확대 — 영역 없음: [표지판 영역 선택]으로 표지판을 끌어 지정하십시오"; return; }
+  const sx=img.naturalWidth/1280, sy=img.naturalHeight/720, pad=0.15, w=r[2]-r[0], h=r[3]-r[1];
+  const x0=Math.max(0,r[0]-pad*w), y0=Math.max(0,r[1]-pad*h), x1=Math.min(1280,r[2]+pad*w), y1=Math.min(720,r[3]+pad*h);
+  const k=Math.min(cv.width/((x1-x0)*sx),cv.height/((y1-y0)*sy)), dw=(x1-x0)*sx*k, dh=(y1-y0)*sy*k;
+  g.imageSmoothingEnabled=false; g.drawImage(img,x0*sx,y0*sy,(x1-x0)*sx,(y1-y0)*sy,(cv.width-dw)/2,(cv.height-dh)/2,dw,dh);
+  const mag=k*sx*1280/Math.max(1,img.getBoundingClientRect().width||960);
+  $("e6m_zcap").textContent=`표지판 확대 · ${E6M.roi?"운용자 선택 영역":"자동 영역 (표지판이 아닐 수 있음)"} · 화면 대비 약 ×${f(Math.max(1,mag),1)} — 숫자 획이 서로 떨어져 보이는지 확인`; }
+function e6mQ(){ const m=E6M.m||{}, sh=m.sharp||{}, r=e6mRoiNow(); const prev=E6M.prevSharp; let d="—";
+  if(sh.roi!=null&&prev!=null&&prev>0){ const p=100*(sh.roi-prev)/prev; d=`${p>=0?"▲":"▼"} ${f(Math.abs(p),0)} %`; }
+  if(sh.roi!=null) E6M.prevSharp=sh.roi;
+  const wpx=r?Math.round((r[2]-r[0])*1.5):null, hpx=r?Math.round((r[3]-r[1])*1.5):null;      // 1280x720 view -> 1920x1080 capture
+  $("e6m_q").innerHTML=[["선명도 (표지판 영역)",`<span class="e6mnum">${f(sh.roi,1)}</span> <span class="small mut">직전 대비 ${d} · 최고 ${f(m.best_roi,1)}</span>`],
+    ["명암 대비 · 밝기",`${f(m.roi_contrast,0)} · ${f(m.luma,0)} <span class="small mut">(0–255)</span>`],
+    ["표지판 크기",r?`${wpx} × ${hpx} px <span class="small mut">(촬영 해상도 기준)</span>${wpx<120?' <b style="color:var(--bad)">작음 — 더 가까이 정지 권장</b>':""}`:"영역 없음"],
+    ["판단",`<span class="small">수치는 참고용입니다 — 확대 화면에서 숫자 획이 또렷이 분리될 때 촬영하십시오</span>`]].map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join(""); }
+function e6mPt(ev){ const cv=$("e6m_cv"), r=cv.getBoundingClientRect(), sc=Math.min(r.width/1280,r.height/720), ox=(r.width-1280*sc)/2, oy=(r.height-720*sc)/2;
+  return [Math.max(0,Math.min(1280,(ev.clientX-r.left-ox)/sc)),Math.max(0,Math.min(720,(ev.clientY-r.top-oy)/sc))]; }
+(()=>{ const cv=$("e6m_cv"); let a=null;
+  cv.addEventListener("pointerdown",ev=>{ if(!E6M.roiMode) return; a=e6mPt(ev); E6M.drag=[a[0],a[1],a[0],a[1]]; cv.setPointerCapture(ev.pointerId); });
+  cv.addEventListener("pointermove",ev=>{ if(!a) return; const b=e6mPt(ev); E6M.drag=[Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])]; e6mDraw(); });
+  cv.addEventListener("pointerup",()=>{ if(!a) return; const r=E6M.drag.map(Math.round); a=null; E6M.drag=null;
+    if(r[2]-r[0]>=24&&r[3]-r[1]>=24){ E6M.roi=r; E6M.roiMode=false; E6M.prevSharp=null; $("e6m_roi_b").textContent="표지판 영역 선택"; E6M.mt=0; } e6mDraw(); e6mZoomDraw(); }); })();
+function e6mRoiMode(){ E6M.roiMode=!E6M.roiMode; $("e6m_roi_b").textContent=E6M.roiMode?"영상에서 표지판을 끌어 선택…":"표지판 영역 선택"; }
+function e6mRoiAuto(){ E6M.roi=null; E6M.roiMode=false; E6M.prevSharp=null; $("e6m_roi_b").textContent="표지판 영역 선택"; E6M.mt=0; }
+function e6mZoom(){ E6M.zoom=!E6M.zoom; fsToggle("e6m_box"); }
+function e6mSave(){ const src=$("e6m_img").src; if(!src) return; const a=document.createElement("a"); a.href=src; a.download=`imx477_preview_${E6M.oid||"x"}_${Date.now()}.jpg`; a.click();
+  toast("미리보기 화면을 이 기기에 저장했습니다 (원본 촬영 아님)"); }
+function e6mCanGo(M,cs){ const why=[];
+  if(!E6M_WAIT.includes(M.phase)) why.push(E6M_PH[M.phase]||M.phase);
+  if(!M.robot_stopped) why.push("로봇 정지 확인 안 됨 — 촬영 불가");
+  if(E6M.fage==null||E6M.fage>1.5||Date.now()-E6M.lastImg>3000) why.push("IMX477 영상 갱신 끊김");
+  if(!CONTROL||!cs.you_own) why.push("이 기기는 제어 권한 없음");
+  if(Date.now()-E6M.busy<6000) why.push("요청 처리 중");
+  return why; }
+async function e6mCmd(action,extra){ if(Date.now()-E6M.busy<6000) return; E6M.busy=Date.now();
+  const [c,j]=await jpost("/api/ctl/e6_manual",Object.assign({request_id:rid(),action,observation_id:E6M.oid,roi:E6M.roi?E6M.roi.join(","):null},extra||{}));
+  if(c>=400||c===0){ E6M.busy=0; toast("E6: "+(j.why||c),true); } else toast({capture:"촬영 요청을 보냈습니다",capture_anyway:"현재 상태로 촬영 요청",cancel:"관측 취소 요청",abort:"관측 중단 요청",accept_capture:"사진 확인 — HOME 후 판독",retake:"다시 촬영 — 초점을 다시 확인하십시오"}[action]);
+  $("e6m_ask").classList.add("hide"); poll(); }
+/* 2026-10-28 field: the backend needs hands_clear (the head moves to HOME right after) — the page now asks for it explicitly.
+   Manual mode: a low sharpness number is a WARNING only (reflection / blur); the operator decides. */
+function e6mAsk(html){ const a=$("e6m_ask"); a.classList.remove("hide"); a.innerHTML=html; }
+function e6mShoot(action,verdict){
+  e6mAsk(`<b>촬영 후 사진 확인 화면이 나옵니다 (팬틸트는 그대로).</b> 표지판이 IMX477 화면에 보이고, 촬영 동안 렌즈에서 손을 뗐습니까?
+    <div class="e6mbtns"><button class="primary sm" onclick="e6mCmd('${action}',{verdict:'${verdict}',hands_clear:true,target_visible:true})">예 — 손 뗐음, 촬영</button>
+    <button class="sm" onclick="$('e6m_ask').classList.add('hide')">아니오 — 다시 조절</button></div>`); }
+function e6mDone(){ const m=E6M.m||{}, s=(m.sharp||{}).roi, sat=m.roi_saturated_frac, r=e6mRoiNow();
+  if(!E6M.roi){
+    e6mAsk(`<b>표지판 영역을 직접 선택하지 않았습니다.</b> 자동 영역은 표지판이 아닐 수 있고, 선명도 수치도 그 영역에서 계산됩니다 (10-31 현장: 3회 모두 자동 영역 오검출).
+      <div class="small mut">그대로 촬영하면 '품질 경고 무시 촬영'으로 기록되며, OCR 신뢰도가 높을 때만 유효 관측으로 셉니다.</div>
+      <div class="e6mbtns"><button class="primary sm" onclick="$('e6m_ask').classList.add('hide');e6mRoiMode()">표지판 영역 선택하기</button>
+      <button class="sm" onclick="e6mShoot('capture_anyway','insufficient')">영역 없이 그대로 촬영</button></div>`); return; }
+  if(r&&(r[2]-r[0])*1.5<120){
+    e6mAsk(`표지판이 작습니다 (${Math.round((r[2]-r[0])*1.5)} px). 10-31 현장의 판독 실패 사진은 76 px 였습니다 — 가능하면 표지판에 더 가까이(2–2.5 m) 정지하십시오.
+      <div class="e6mbtns"><button class="sm" onclick="$('e6m_ask').classList.add('hide')">다시 조절</button>
+      <button class="sm" onclick="e6mShoot('capture_anyway','insufficient')">그대로 촬영</button></div>`); return; }
+  if(s==null||s<30||(sat||0)>=0.05){
+    e6mAsk(`현재 영상의 측정 선명도가 낮습니다 (표지판 영역 ${f(s,1)}${sat!=null?` · 포화 ${f(100*sat,1)}%`:""}). 반사광이나 흐림이 있을 수 있습니다.
+      <div class="small mut">수동 초점 모드에서는 이 수치로 촬영을 막지 않습니다 — 품질 정보로만 저장됩니다.</div>
+      <div class="e6mbtns"><button class="sm" onclick="$('e6m_ask').classList.add('hide')">다시 조절</button>
+      <button class="sm" onclick="e6mShoot('capture_anyway','insufficient')">현재 상태로 촬영</button></div>`); return; }
+  e6mShoot("capture","sharp"); }
+function e6mCancel(){
+  e6mAsk(`관측을 취소하면 팬틸트가 HOME 으로 돌아가고 이 관측은 세지 않습니다. 렌즈에서 손을 뗐습니까?
+    <div class="e6mbtns"><button class="sm" onclick="e6mCmd('cancel',{hands_clear:true,target_visible:true})">손 뗐음 — 관측 취소</button>
+    <button class="sm" onclick="e6mCmd('cancel',{hands_clear:true,target_visible:false})">표지판이 화면에 없음 — 조준 실패로 취소</button>
+    <button class="sm ghost" onclick="$('e6m_ask').classList.add('hide')">돌아가기</button></div>`); }
+function e6mAbort(){ if(confirm("관측을 중단합니까?\n팬틸트는 HOME 으로 돌아가지 않으며 E6 는 멈춥니다 (헤드 점검 후 실험 종료).")) e6mCmd("abort"); }
+function e6mKv(){ const M=E6M.M||{}, m=E6M.m||{}, sh=m.sharp||{}, d=S||{}, SU=((d.e5||{}).stop_request_ui)||{};
+  const it=[...(SU.items||[]),...(SU.confirmed_recent||[])].find(x=>x.observation_id===M.observation_id)||{};
+  const P=((d.live2||{}).e8_pair)||{}, nobs=(P.observations||[]).length+(E6M_ACTIVE.includes(M.phase)?1:0);
+  const t=E6M.lastImg?new Date(E6M.lastImg).toLocaleTimeString("ko-KR",{hour12:false}):"—";
+  $("e6m_kv").innerHTML=[["관측",`${esc(M.observation_id||"—")} · ${nobs||1}차 관측`],
+    ["SigLIP 대상",it.sim!=null?`유사도 ${f(it.sim,3)} · 약 ${f(it.depth_m,1)} m · ${esc(it.target_track_id||it.basis||"")}`:esc(M.source||"—")],
+    ["팬·틸트 명령각",M.pan_command!=null?`팬 ${f(M.pan_command,1)}° · 틸트 ${f(M.tilt_command,1)}° <span class="small mut">(명령값)</span>`:"—"],
+    ["표지판 영역",`${esc({OPERATOR_SELECTED:"운용자 선택",SIGN_COMPONENT:"자동 검출",CENTRE_FALLBACK:"중앙(검출 실패)",CENTRE_FALLBACK_SMALL:"중앙(검출 작음)"}[m.roi_source]||m.roi_source||"—")}`],
+    ["선명도 · 표지판 영역",`<span class="e6mnum">${f(sh.roi,1)}</span> <span class="small mut">최고 ${f(m.best_roi,1)} · 기준 30</span>`],
+    ["선명도 · 학생 중앙",`${f(sh.centre,1)} <span class="small mut">(다른 척도)</span>`],["선명도 · 전체 화면",`${f(sh.full,1)} <span class="small mut">(다른 척도)</span>`],
+    ["영상",`프레임 ${esc(E6M.fseq||"—")} · ${t} · 지연 ${f(E6M.fage,2)} s · 전송 ${E6M.lat??"—"} ms`],
+    ["로봇 정지",M.robot_stopped?`<span class="pill p-live">정지 확인</span>`:`<span class="pill p-bad">정지 아님</span> <span class="small">${esc((M.stop||{}).why||"")}</span>`],
+    ["흔들림",M.stabilization?`${esc(M.stabilization.label==="WAIT_AIM_SETTLE"?"조준 후":"정지 후")} ${f(M.stabilization.elapsed_s,1)} s · 영상 이동 ${f((M.stabilization.last||{}).px,1)} px (기준 ≤ ${f(M.stabilization.ok_px,0)} px)${M.aim_settle_warning?` · <span class="small">${esc(M.aim_settle_warning)}</span>`:""}`:"—"],
+    ["진행",`${esc(E6M_PH[M.phase]||M.phase||"—")} · ${f(M.waited_s,0)} s <span class="small mut">${esc(M.why||"")}</span>`]].map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join("");
+  const w=(m.roi_warning||[]).map(x=>`<div class="note warn" style="margin-top:6px">${esc(x)}</div>`).join("");
+  const pr=M.aim_basis==="PREDICTED_OUT_OF_VIEW"?`<div class="note warn" style="margin-top:6px">예측 조준 (정지 후 RealSense 화면 밖) — 표지판이 IMX477 화면에 보이는지 확인하십시오. 안 보이면 [관측 취소] → "표지판이 화면에 없음".</div>`:"";
+  const ob=M.over_budget?`<div class="note warn" style="margin-top:6px">${esc(M.why||"수동 초점 예산 초과")}</div>`:"";
+  const tc=pr+ob+(M.target_seen_at_aim===false?`<div class="note warn" style="margin-top:6px">조준 직후 표지판이 자동 검출되지 않았습니다 — 흐림 때문일 수 있습니다. 영상을 보고 판단하십시오.</div>`:"");
+  const rp=(M.replies||[]).slice(-1)[0]; const rr=rp?`<div class="note ${rp.accepted?"":"bad"}" style="margin-top:6px">${rp.accepted?"처리됨":"거부됨"}: ${esc(rp.why||"")}</div>`:"";
+  $("e6m_warn").innerHTML=tc+w+rr; }
+function renderE6M(d,cs){ const M=((d.live2||{}).e6_manual)||null, X=cs.experiment||{};
+  const since=M?(Number(M.wall||0)-Number(M.phase_since||0))+Number(M.age_s||0):1e9;
+  const show=!!M&&(!M.experiment_id||M.experiment_id===X.exp_id)&&(E6M_ACTIVE.includes(M.phase)||since<20)&&(M.age_s==null||M.age_s<30);
+  $("e6m").classList.toggle("hide",!show); E6M.on=show; if(!show){ if(E6M.zoom) e6mZoom(); return; }
+  if(E6M.oid!==M.observation_id){ E6M.oid=M.observation_id; E6M.roi=null; E6M.m=null; E6M.prevSharp=null; E6M.busy=0; $("e6m_ask").classList.add("hide"); }
+  if(E6M.M&&E6M.M.phase!==M.phase) E6M.busy=0;
+  E6M.M=M; e6mLoop(); e6mKv();
+  const bad=["HOME_NOT_CONFIRMED","DEVICE_ERROR","USER_ABORTED","AIM_FAILED","CAPTURE_FAILED"].includes(M.phase), ok=M.phase==="HOME_CONFIRMED";
+  pill($("e6m_pill"),E6M_PH[M.phase]||M.phase,bad?"p-bad":ok?"p-live":"p-warn");
+  const fresh=E6M.fage!=null&&E6M.fage<=1.5&&Date.now()-E6M.lastImg<3000;
+  pill($("e6m_badge"),fresh?`IMX477 실시간 ${f(E6M.fage,2)} s`:"영상 끊김",fresh?"p-live":"p-bad");
+  $("e6m_veil").classList.toggle("hide",fresh||!E6M.err); $("e6m_veil").textContent="IMX477 영상을 받지 못했습니다 ("+(E6M.err||"")+")";
+  const why=e6mCanGo(M,cs); $("e6m_go").disabled=why.length>0; $("e6m_why").textContent=why.length?"촬영 버튼 비활성: "+why.join(" · "):"";
+  const wait=(E6M_WAIT.includes(M.phase)||M.phase==="CAPTURE_REVIEW")&&CONTROL&&cs.you_own; $("e6m_cancel").disabled=!wait; $("e6m_abort").disabled=!(wait||M.phase==="AIMING");
+  e6mReview(M,cs); e6mRepos(M,cs); }
+/* R36: refused aim -> what to do with the joystick; nothing moves by itself and the envelope is unchanged */
+function e6mRepos(M,cs){ let el=$("e6m_repos"); if(!el){ el=document.createElement("div"); el.id="e6m_repos"; el.className="note warn hide"; el.style.marginTop="8px"; $("e6m_rev").parentNode.insertBefore(el,$("e6m_rev")); }
+  const on=M.phase==="REPOSITION_NEEDED"; el.classList.toggle("hide",!on); if(!on){ el.dataset.k=""; return; } $("e6m_go").classList.add("hide");
+  const G=M.guidance||{}, R=M.refused||{}, can=CONTROL&&cs.you_own, k=[M.observation_id,G.text,can].join("|");
+  if(el.dataset.k===k) return; el.dataset.k=k;
+  el.innerHTML=`<div style="font-size:1.25em"><b>${esc(G.text||M.why||"")}</b></div>
+    <div class="small mut">거부 이유: ${esc(R.status||"")} ${R.pan!=null?`· 필요 팬 ${f(R.pan,1)}° 틸트 ${f(R.tilt,1)}°`:""} · 팬틸트는 움직이지 않았습니다. 허용 범위는 바꾸지 않습니다.</div>
+    <div class="e6mbtns" style="margin-top:8px">${G.ok===false?"":`<button class="primary" ${can?"":"disabled"} onclick="e6mCmd('reposition_done')">재조준</button>`}
+    <button ${can?"":"disabled"} onclick="e6mCmd('reposition_skip')">이번 표지판 건너뛰기</button></div>`; }
+/* 2026-11-01 post-capture review: the SAVED photo (sha256-verified file, /img/e8/<file>) + zoom of its sign ROI; the operator
+   accepts it for OCR (then HOME) or retakes it in the same observation. Older attempts are kept on disk but never read. */
+function e6mReview(M,cs){ const el=$("e6m_rev"), R=M.review; const on=M.phase==="CAPTURE_REVIEW"&&R&&R.file;
+  el.classList.toggle("hide",!on); $("e6m_go").classList.toggle("hide",!!on); if(!on){ E6M.revKey=null; return; }
+  const key=R.sha256+":"+R.n, can=CONTROL&&cs.you_own;
+  if(E6M.revKey!==key){ E6M.revKey=key;
+    el.innerHTML=`<b>${R.n}번째 촬영 사진 확인</b> <span class="small mut">(${esc(R.resolution?R.resolution.join("×"):"")} · sha256 ${esc(String(R.sha256).slice(0,12))} · 최대 ${R.max_attempts}회)</span>
+      <img id="e6m_rev_img" alt="" style="width:100%;margin-top:6px;border-radius:6px" src="/img/e8/${encodeURIComponent(R.file)}?v=${encodeURIComponent(R.sha256)}">
+      <canvas id="e6m_rev_zoom" width="480" height="200" style="width:100%;background:#111;border-radius:6px;margin-top:6px"></canvas>
+      <div class="small" id="e6m_rev_flags"></div>
+      <div class="e6mbtns"><button class="primary" id="e6m_acc" onclick="e6mAccept()">사진 확인 · 판독 진행</button>
+      <button id="e6m_retake" onclick="e6mCmd('retake')">다시 촬영</button></div>`;
+    const im=$("e6m_rev_img"); im.onload=()=>{ const cv=$("e6m_rev_zoom"), g=cv.getContext("2d"), r=R.roi||[320,180,960,540], sx=im.naturalWidth/1280, sy=im.naturalHeight/720;
+      const k=Math.min(cv.width/((r[2]-r[0])*sx),cv.height/((r[3]-r[1])*sy)), dw=(r[2]-r[0])*sx*k, dh=(r[3]-r[1])*sy*k;
+      g.fillStyle="#111"; g.fillRect(0,0,cv.width,cv.height); g.imageSmoothingEnabled=false; g.drawImage(im,r[0]*sx,r[1]*sy,(r[2]-r[0])*sx,(r[3]-r[1])*sy,(cv.width-dw)/2,(cv.height-dh)/2,dw,dh); }; }
+  const fl=(R.flags||[]).filter(x=>x!=="MANUAL_ACCEPTED"), ko={LOW_SHARPNESS:"선명도 낮음",LOW_TEXT_CONTRAST:"대비 낮음",TARGET_ROI_NOT_DETECTED:"표지판 영역 미지정·미검출",SATURATED_ROI:"반사광",SUSPECTED_GLARE:"반사광 의심"};
+  $("e6m_rev_flags").innerHTML=`확대 영역: ${esc(R.roi_source==="OPERATOR_SELECTED"?"운용자 선택":R.roi_source||"—")} · 품질: ${fl.length?fl.map(x=>`<span class="chip bad">${esc(ko[x]||x)}</span>`).join(" "):'<span class="chip ok">경고 없음</span>'}
+    <div class="small mut">숫자가 읽히지 않으면 [다시 촬영] — 같은 관측 안에서 다시 초점을 맞춥니다 (재조준·정지 이벤트 없음, 독립 관측 수는 늘지 않음).</div>`;
+  $("e6m_acc").disabled=!can||Date.now()-E6M.busy<6000; $("e6m_retake").disabled=!can||Date.now()-E6M.busy<6000||R.n>=R.max_attempts; }
+function e6mAccept(){
+  e6mAsk(`<b>사진을 확인하면 팬틸트가 HOME 으로 움직이고 판독이 시작됩니다.</b> 렌즈에서 손을 뗐습니까?
+    <div class="e6mbtns"><button class="primary sm" onclick="e6mCmd('accept_capture',{hands_clear:true})">예 — 손 뗐음, 판독 진행</button>
+    <button class="sm" onclick="$('e6m_ask').classList.add('hide')">돌아가기</button></div>`); }
+/* ---------- READY / aim detail / FIX popup (2026-10-27 field fixes). All from backend state; nothing is sent to the robot. */
+const SND_SEEN=new Set((()=>{ try{ return JSON.parse(sessionStorage.getItem("snd_seen")||"[]"); }catch(e){ return []; } })());
+function sndOnce(k,seq){ if(!k||SND_SEEN.has(k)) return false; SND_SEEN.add(k); try{ sessionStorage.setItem("snd_seen",JSON.stringify([...SND_SEEN].slice(-80))); }catch(e){}
+  tone(seq); return true; }
+function renderReady(cs){ const R=cs.ready||{}, L=R.latched, N=R.now||{};
+  if(L){ sndOnce(L.event_id,[[523,0.12],[659,0.12],[784,0.12],[1047,0.32]]);
+    const recent=N&&false; $("ready_banner").innerHTML=`<div class="note" style="margin-bottom:10px;border-color:var(--live);background:var(--live-bg)"><b>위치추정 시스템 준비 완료</b> — 조이스틱으로 로봇 이동을 시작할 수 있습니다. <span class="small mut">시작 후 ${f(L.after_start_s,0)} s · E6 ${esc(((L.e6||{}).running)?"동작":"꺼짐 ("+((L.e6||{}).approval_b||"")+")")}</span></div>`; return; }
+  const it=(N.items||[]); if(!it.length){ $("ready_banner").innerHTML=""; return; }
+  $("ready_banner").innerHTML=`<div class="note warn" style="margin-bottom:10px"><b>준비 중 — 아직 움직이지 마십시오</b> ${it.map(i=>`<span class="small" style="margin-left:8px">${i.ok?"✓":"✗"} ${esc(i.ko)}</span>`).join("")}${N.e6?`<span class="small" style="margin-left:8px">· E6 ${N.e6.running?"동작":"꺼짐: "+esc(N.e6.approval_b||N.e6.why||"")} (이동 준비와 별개)</span>`:""}</div>`; }
+const AIMKO_BAD=["E6_OFF_NO_APPROVAL_B","E6_OFF","E6_BLOCKED","OUTSIDE_ENVELOPE","OUT_OF_REALSENSE_VIEW","TARGET_BEHIND","DEPTH_OR_ODOM_INVALID","DEVICE_ERROR","CAMERA_NO_FRAME","TARGET_NOT_IN_IMX477","REFUSED_NO_VALID_APPROVAL"];
+function tstr(w){ return w?new Date(w*1000).toLocaleTimeString("ko-KR",{hour12:false}):"—"; }
+function renderAim(d){ const A=((d.live2||{}).e6_aim)||null; $("aim_card").classList.toggle("hide",!A||!A.observation_id); if(!A||!A.observation_id) return;
+  const bad=AIMKO_BAD.includes(A.status), ok=A.status==="AIMED_CAPTURED";
+  pill($("aim_pill"),A.status,bad?"p-bad":ok?"p-live":"p-warn");
+  const img=$("aim_img"), u=`/img/e5event/${encodeURIComponent(A.observation_id)}.jpg`;
+  if(A.event_image&&img.dataset.u!==u){ img.dataset.u=u; img.onload=()=>{ const cv=$("aim_cv"), w=img.naturalWidth, h=img.naturalHeight; cv.width=w; cv.height=h; const g=cv.getContext("2d"); g.clearRect(0,0,w,h);
+      const o=(((d.live2||{}).e6||{}).recent||[]).find(x=>x.observation_id===A.observation_id)||{}, b=o.bbox; if(b){ g.strokeStyle="#f6e05e"; g.lineWidth=3; g.strokeRect(b[0],b[1],b[2]-b[0],b[3]-b[1]); } }; img.src=u; }
+  if(!A.event_image){ img.removeAttribute("src"); img.dataset.u=""; }
+  const T=A.times||{}, m=A.motion||{}, t0=A.target_at_detection||{}, t1=A.target_at_stop||{}, au=A.aim_uncorrected||{}, ac=A.aim_corrected||{}, ar=A.aim_redetected||{}, E=A.envelope||{}, P=A.precision||{};
+  const dir=t=>t.bearing_deg==null?"—":`${t.bearing_deg>0?"왼쪽":"오른쪽"} ${f(Math.abs(t.bearing_deg),0)}° · ${f(t.range_m,1)} m`;
+  $("aim_kv").innerHTML=[["상태",`<b>${esc(A.ko||A.status)}</b>`],["SigLIP 검출",tstr(T.detected)],["정지 요청 · 정지 확인",`${tstr(T.stop_requested)} · ${tstr(T.stop_confirmed)}`],
+    ["검출 → 정지",T.detect_to_stop_s!=null?`${f(T.detect_to_stop_s,1)} s · 이동 ${f(m.path_m,1)} m (직선 ${f(m.net_m,1)} m) · 회전 ${f(m.dyaw_deg,0)}°`:"—"],
+    ["표지판 방향",`검출 시 ${dir(t0)} → 정지 후 ${dir(t1)}`],
+    ["목표 팬·틸트",ac.pan!=null?`<b>${f((A.aim_used||ac).pan,1)}° / ${f((A.aim_used||ac).tilt,1)}°</b> <span class="small mut">(${esc((A.aim_used||{}).basis||"보정 예측")}, 명령각)</span>`:"—"],
+    ["허용 범위",E.pan?`팬 ${E.pan[0]}–${E.pan[1]}° · 틸트 ${E.tilt[0]}–${E.tilt[1]}° ${A.inside_envelope===false?'<span class="pill p-bad">범위 밖</span>':""}`:"—"],
+    ["Nano 응답",P.status?`${esc(P.status)} ${esc((P.aim||{}).status||"")} ${esc((P.aim||{}).device_state||"")}`:"명령 없음"]].map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join("");
+  $("aim_kv2").innerHTML=[["검출 시 대상 (로봇 기준)",`앞 ${f(t0.fwd,2)} · 왼쪽 ${f(t0.left,2)} m · 깊이 ${f(t0.depth_m,2)} m`],["정지 후 대상",`앞 ${f(t1.fwd,2)} · 왼쪽 ${f(t1.left,2)} m`],
+    ["미보정 조준 (검출 픽셀)",au.pan!=null?`${f(au.pan,1)} / ${f(au.tilt,1)}° (사용 안 함)`:"—"],["보정 조준 (정지 자세)",ac.pan!=null?`${f(ac.pan,1)} / ${f(ac.tilt,1)}° · RealSense 화면 안 ${ac.in_image?"예":"아니오"}`:"—"],
+    ["정지 후 재검출",ar.pan!=null?`${f(ar.pan,1)} / ${f(ar.tilt,1)}° · ${f(ar.depth_m,2)} m`:esc(A.redetection||"—")],["좌표계","FAST-LIO odom (같은 세션) · 각도는 학생 보정 명령각"]].map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join(""); }
+let FIX_SHOWN=null;
+function fixClose(){ $("fixdlg").classList.add("hide"); }
+function renderFix(d,cs){ return; /* r33: replaced by renderFinal (in-page card, backend final_fix only) */ const E=((d.live2||{}).e7)||{}; if(E.global_decision!=="GLOBAL_CONFIRMED") return;
+  const X=cs.experiment||{}, k=`${X.exp_id}:${E.observation_id}:${E.written_wall}`; if(FIX_SHOWN===k) return;
+  const first=sndOnce("FIX:"+k,[[784,0.15],[988,0.15],[1175,0.15],[1568,0.5]]);
+  if(first){ try{ if(window.speechSynthesis){ const u=new SpeechSynthesisUtterance("위치추정이 완료되었습니다"); u.lang="ko-KR"; speechSynthesis.speak(u);} }catch(e){} }
+  FIX_SHOWN=k; if(!first&&$("fixdlg").dataset.closed===k) return;
+  const id=E.semantic_hypothesis||E.best, h=((((d.live2||{}).e3)||{}).hypotheses||[]).find(x=>x.id===id), B=E.best_result||{};
+  const path=E.path==="STRUCTURE_ONLY"?"STRUCTURE_ONLY (구조정보 기반)":"STRUCTURE_SEMANTIC_FUSION (구조 + 의미 관측)";
+  const ttf=(E.written_wall&&X.created_wall)?E.written_wall-X.created_wall:null;
+  $("fix_kv").innerHTML=[["건물",esc(X.building||"—")],["층",h?`<b>${h.floor}F</b>`:"—"],["지도 X · Y",h&&h.pose_m?`<b>${f(h.pose_m[0],2)} m · ${f(h.pose_m[1],2)} m</b>`:"가설이 현재 세션에 없음 — 좌표 표시 안 함"],
+    ["방향 Yaw",h?`<b>${f(h.heading_deg,1)}°</b>`:"—"],["위치추정 완료시간",ttf!=null?`${f(ttf,1)} s (실험 시작부터)`:"—"],["관측 횟수",`${(E.used_observation_ids||[]).length}회`],
+    ["위치 결정 경로",esc(path)],["E7 검증",`통과 · 정합 점수 ${f(B.alignment_score,3)} · 잔차 ${f(B.residual_m,2)} m · inlier ${f(B.inlier_ratio,2)} · 경쟁 후보 차 ${f(B.gap_m,2)} m`]].map(([a,b])=>`<div>${a}</div><div>${b}</div>`).join("");
+  $("fix_note").textContent="초록 = 최종 확정 위치·방향, 노랑 = 1차 예상(미확정), 주황 = 융합 후보. FAST-LIO 궤적은 지도 변환 계약이 확인되지 않아 이 지도에 그리지 않습니다.";
+  $("fixdlg").classList.remove("hide"); $("fixdlg").dataset.closed=k; if(h) drawFixMap(d,h); }
+async function drawFixMap(d,h){ const c=$("fix_map"), b=(((d.live2||{}).e2)||{}).building||"kci", fl=h.floor, key=b+"/"+fl;
+  if(fmeta[key]===undefined){ fmeta[key]=null; try{ const r=await fetch(`/api/floor_meta?b=${b}&f=${fl}`); if(r.ok) fmeta[key]=await r.json(); }catch(e){} }
+  const m=fmeta[key]; if(!m||!h.pose_px) return; const s=c.width/(m.size[0]*m.factor); c.height=Math.round(m.size[1]*m.factor*s);
+  const im=new Image(); im.onload=()=>{ const g=c.getContext("2d"); g.drawImage(im,0,0,c.width,c.height);
+    const P=((d.live2||{}).e8_pair)||{}, ev=P.evaluation||((P.last_closed||{}).evaluation)||{};
+    (ev.per_observation||[]).forEach(r=>{ const pv=r.provisional; if(pv&&pv.target_px&&pv.floor===fl){ g.fillStyle="#d69e2e"; g.beginPath(); g.arc(pv.target_px[0]*m.factor*s,pv.target_px[1]*m.factor*s,5,0,7); g.fill(); } });
+    const x=h.pose_px[0]*m.factor*s, y=h.pose_px[1]*m.factor*s, a=(h.heading_deg||0)*Math.PI/180;
+    drawOverlay(g,m,s,(d.live2||{}).loc_overlay&&(d.live2||{}).loc_overlay.leader===h.id?(d.live2||{}).loc_overlay:null,fl);
+    g.fillStyle="#2f855a"; g.beginPath(); g.arc(x,y,9,0,7); g.fill(); g.strokeStyle="#2f855a"; g.lineWidth=4; g.beginPath(); g.moveTo(x,y); g.lineTo(x+28*Math.cos(a),y-28*Math.sin(a)); g.stroke(); };
+  im.src=`/img/floor/${b}/${fl}.png`; }
+/* ---------- r33 (2026-11-01): ONE live location card + the final result only after a backend FIX.
+   Before a FIX: the top card shows the current best E2/E3 candidate (structure map frame, propagated to the newest LiDAR frame by
+   loc_overlay) as PROVISIONAL; nothing looks like a result. FIX: cs.final_fix.valid (console: e7_state GLOBAL_CONFIRMED written by
+   e6e7_link after all its gates, in THIS experiment) — never an E7 score, a SHADOW pass or a candidate. */
+const FIN={seen:null,closed:null,force:null};
+function mmss(s){ if(s==null||isNaN(s)) return "—"; s=Math.max(0,Math.round(s)); const m=Math.floor(s/60); return `${m}:${String(s%60).padStart(2,"0")}`; }
+function nowLeader(L2){ const H=(((L2.e3||{}).hypotheses)||[]).filter(h=>h.status==="ACTIVE"||h.status==="SUSPENDED").sort((a,b)=>(a.score??9)-(b.score??9));
+  return H[0]||null; }
+function nowPose(L2,top,now){ const O=L2.loc_overlay;
+  if(top&&O&&O.leader===top.id&&O.pose_px&&O.ppm&&O.floor===top.floor)
+    return {floor:top.floor,x:O.pose_px[0]/O.ppm,y:O.pose_px[1]/O.ppm,th:O.heading_deg,t:O.t_end,src:"최신 LiDAR 프레임으로 전파"};
+  if(top&&top.pose_m) return {floor:top.floor,x:top.pose_m[0],y:top.pose_m[1],th:top.heading_deg,t:(L2.e3||{}).written_wall,src:"E3 최신 키프레임"};
+  return null; }
+const OPS_NOTICE_S=240, OPS_NOTICE_TXT="현재 위치추정 진행 중 — 추가 구조정보 또는 장소정보가 필요합니다.";
+function nowStatus(d,cs,top){ const L2=d.live2||{}, X=cs.experiment||{}, t0=X.created_wall||0, FF=cs.final_fix||{}, SP=L2.structure_path||{}, P=L2.e8_pair||{},
+    E7=L2.e7||{}, E4=L2.e4||{}, now=((d||{}).meta||{}).server_wall||Date.now()/1000;
+  if(FF.valid) return ["ok","최종 초기 전역 위치추정 완료","E7 LiDAR 독립 재정합 검증 통과 — 아래 최종 결과 참조"];
+  if(SP.status==="RUNNING"||P.state==="E7_VERIFYING") return ["warn","최종 위치 검증 중 (VERIFYING)",SP.status==="RUNNING"?"구조 기반 E7 — 천천히 계속 이동":"의미정보 기반 E7 LiDAR 재정합 진행 중. 로봇은 계속 이동해도 됩니다."];
+  const FVF=L2.final_verify||{}, SE=L2.semantic_estimate||{}, A=L2.auto_state||{}, CK=cs.op_clock||{};
+  if(FVF.status==="FINAL_VERIFICATION_STOP_REQUESTED") return ["bad","최종 위치 검증을 위해 정지해 주세요.",`${FVF.leader_floor}F 단독 선두 · 정지하면 최신 LiDAR로 E7 검증`];
+  if(FVF.status==="VERIFYING") return ["warn","최종 위치 검증 중 (VERIFYING)","정지 상태 유지 — 최신 LiDAR 정합 계산 중"];
+  if(FVF.status==="SHADOW_WOULD_CONFIRM") return ["warn","검증 조건은 충족했지만 구조 FIX 정책이 꺼져 있어 확정하지 않았습니다 (SHADOW).",FVF.why||""];
+  if(SE.status&&SE.status!=="NO_READING"){ const lab=(SE.readings||[]).map(x=>x.label).join(" → "), fl=(SE.floors||[]).join("·"), wko=fixWhyKo(L2), rule=wko?` · ${wko}`:"";
+    if(SE.status==="WAITING_CANDIDATE") return ["warn",`호실 ${lab} 판독 → ${fl}F. 위치 후보 계산 중`,SE.why||""];
+    if(SE.status==="INCONSISTENT") return ["bad",`판독 ${lab}: 지도와 이동량이 맞지 않습니다`,SE.why||""];
+    return ["warn",`의미정보 기반 예상 위치: ${lab} → ${fl}F`,`${SE.status==="MULTI_PLACE"?"서로 다른 장소 2곳 이상 일치":"장소 1곳 판독 — 다음 표지판 필요"}${(SE.alternatives||[]).length?` · 다른 위치 후보 ${(SE.alternatives||[]).length}개`:""}${rule}`]; }
+  if(A.needs_pantilt_consent) return ["warn","구조만으로 구별되지 않습니다 — 하드웨어 사용 동의가 필요합니다.","이번 실험은 팬틸트 동의 없이 시작해 표지판을 촬영할 수 없습니다. 구조 기반 추정은 계속합니다."];
+  if(CK.ops_s!=null&&CK.ops_s>=OPS_NOTICE_S&&!CK.ops_paused) return ["warn",OPS_NOTICE_TXT,((A.assessment||{}).why)||(A.state_ko||"")];
+  if(A.structure_class==="DISCRIMINATIVE") return ["warn",`구조로 구별되는 위치: ${(A.assessment||{}).leader_floor}F 유력 (PROVISIONAL)`,"표지판 정지 없이 계속 이동합니다. 전 층 비교가 끝나면 정지 요청 후 E7로 검증합니다."];
+  if(A.structure_class==="AMBIGUOUS") return ["warn","구조만으로 층이 구별되지 않습니다. 표지판을 찾고 있습니다.",((A.assessment||{}).why)||""];
+  const LG=L2.e7_long||{}; if(LG.leader_floor&&LG.status==="AMBIGUOUS_FLOORS") return ["warn",`구조만으로 층을 구분하지 못했습니다 (AMBIGUOUS): ${LG.leader_floor}F 유력, ${(LG.close_floors||[]).join("·")}F 와 차이 ${f(LG.next_gap_m,3)} m`,"정답을 알 수 없어 FIX 하지 않습니다."];
+  if(SP.status==="SHADOW_WOULD_CONFIRM") return ["neu","현재 유력 위치 표시 중 · 최종 확정 기능 비활성화","구조 기반 최종 확정은 정책상 꺼져 있습니다 (상세 정보: E7 STRUCTURE SHADOW)"];
+  const lastFail=Math.max(SP.status==="NOT_CONFIRMED"?(SP.ended_wall||0):0,
+    (E7.global_decision&&E7.global_decision!=="GLOBAL_CONFIRMED"&&(E7.written_wall||0)>=t0)?(E7.written_wall||0):0);
+  if(lastFail&&now-lastFail<120) return ["bad","현재 후보를 최종 확정하지 못했습니다. 추가 관측이 필요합니다.","실패 이유는 상세 정보의 E7 항목에 있습니다"];
+  if(["AMBIGUOUS","GEOMETRY_INCONSISTENT"].includes(E4.state)){ const M=L2.e6_manual||{}, ph=M.phase;
+    const step=ph&&E6M_ACTIVE.includes(ph)?` · 현재: ${E6M_PH[ph]||ph}`:((cs.e6_settle||{}).state==="WAITING_FOR_SETTLE_APPROVAL"?" · 현재: 정지 후 ① 승인 대기":"");
+    return ["warn","여러 위치 후보가 유사하게 일치합니다. 장소정보를 이용해 위치를 구분하고 있습니다.",step.replace(/^ · /,"")]; }
+  if(top) return ["warn","현재 가장 유력한 위치를 찾았습니다.","추가 관측을 통해 최종 위치를 검증하고 있습니다."];
+  return ["neu","주변 구조를 분석하여 현재 위치를 탐색하고 있습니다.",""]; }
+function renderNow(d,cs){ const el=$("now_card"); if(!el) return; const X=(cs||{}).experiment||{};
+  try{ renderResult(d,cs); }catch(e){ console.error(e); }
+  try{ renderTopK(d); }catch(e){ console.error(e); }
+  const FVR=((d||{}).live2||{}).final_verify; if(FVR&&FVR.status==="FINAL_VERIFICATION_STOP_REQUESTED"&&FVR.event_id){ if(sndOnce(FVR.event_id,[[523,0.25],[784,0.25],[523,0.25],[784,0.25],[1047,0.5]])){ try{ if(navigator.vibrate) navigator.vibrate([300,100,300]); }catch(e){} } }
+  const run=X.exp_id&&["RUNNING","PARTIAL","PAUSED"].includes(X.state); el.classList.toggle("hide",!run); if(!run){ el.innerHTML=""; return; }
+  const L2=(d||{}).live2||{}, now=((d||{}).meta||{}).server_wall||Date.now()/1000, top=nowLeader(L2), FF=cs.final_fix||{}, FO=L2.fix_overlay||{};
+  const [k,t,sub]=nowStatus(d,cs,top);
+  let P=null, fin=false;
+  if(FF.valid&&cs.final_fix.fix_overlay_ok&&FO.pose_m){ P={floor:FO.floor,x:FO.pose_m[0],y:FO.pose_m[1],th:FO.heading_deg,t:FF.t_fix,src:"E7 보정 최종 자세"}; fin=true; }
+  else P=nowPose(L2,top,now);
+  const age=P&&P.t?now-P.t:null, stale=age!=null&&age>10;
+  const C=cs.op_clock||{}, pz=C.paused;
+  const PQ=(L2.auto_state||{}).pose_quality, lowQ=!fin&&PQ&&PQ.low&&top&&PQ.id===top.id;
+  const kv=P?[["추정 층",`<b style="font-size:1.4em">${P.floor}F</b>`],["추정 위치",`x <b>${f(P.x,1)}</b> m · y <b>${f(P.y,1)}</b> m <span class="small mut">(구조지도 좌표)</span>`],
+      ["추정 방향 θ",`<b>${f(P.th,0)}°</b>`],["갱신",`${age!=null?f(age,0)+" s 전":"—"} · ${esc(P.src)}${stale?' <b style="color:var(--bad)">— 위치 갱신 지연: 실시간 값 아님</b>':""}`],
+      ["상태",fin?'<span class="chip ok">최종 확정</span>':(lowQ?'<b style="color:var(--bad)">위치 신뢰 낮음</b> <span class="small">층이 맞아도 위치가 크게 틀릴 수 있습니다: '+esc((PQ.reasons||[]).join(", "))+'</span>':'<b>잠정 위치추정</b> <span class="small mut">최종 검증 전이며 현재 관측에 따라 변경될 수 있습니다.</span>')]]:[];
+  el.innerHTML=`<div class="card" style="margin-bottom:10px;border-color:${fin?"var(--live)":"var(--line,#444)"}"><h3 style="margin:0 0 6px">현재 위치추정 ${fin?'<span class="chip ok">FIX</span>':'<span class="chip warn">잠정 · 미확정</span>'}${fin?"":' <button class="primary r" id="res_open" style="padding:6px 12px" onclick="resDetail()">현재 추정 결과 보기</button>'}</h3>
+    <div class="note ${k==="bad"?"bad":k==="warn"?"warn":""}" style="font-size:1.15em;margin-bottom:8px" id="now_status"><b>${esc(t)}</b>${sub?`<br><span class="small">${esc(sub)}</span>`:""}</div>
+    ${P?`<div class="small mut">${fin?"최종 위치":"현재 가장 유력한 위치"}</div><div class="kv" id="now_kv">${kv.map(([a,b])=>`<div>${a}</div><div>${b}</div>`).join("")}</div>`:""}
+    <div class="kv" id="now_clock" style="margin-top:8px"><div>실제 경과시간</div><div><b>${mmss(C.raw_s)}</b></div>
+      <div>수동조작 기준 보정시간</div><div><b>${mmss(C.normalized_s)}</b>${pz?` <span class="chip warn">일시정지 — ${pz.kind==="SETTLE"?"진동 안정화":"수동 초점"} 중</span>`:""}
+        <br><span class="small mut">진동 안정화 1초·수동 초점 3초를 가정한 분석값 (완료 ${C.N_settle??0}·${C.N_focus??0}회) — 실제 측정 시간이 아님</span></div></div></div>`; }
+/* R34: the backend's own status (console status_view): E2 crash / hold / regional fit, depth, E4 rival, E7 shadow, anchored candidate, observation results. It never decides anything. */
+function renderField(cs){ const el=$("field_status"); if(!el) return; const X=(cs||{}).experiment||{}, F=(cs||{}).field_status||null;
+  const run=X.exp_id&&["RUNNING","PARTIAL","PAUSED"].includes(X.state)&&F; el.classList.toggle("hide",!run); if(!run){ el.innerHTML=""; return; }
+  /* 2026-11-15 esy: a sound of its own, once, when the structure-confirmation chip (status_view kci_confirm_chip) turns up; again only if the confirmed floor changes. Display side only. */
+  { const kc=(F.chips||[]).find(c=>c&&c.code==="KCI_STRUCT_CONFIRMED"); if(kc&&sndOnce("kci:"+X.exp_id+":"+kc.text,[[1319,0.12],[988,0.12],[1319,0.12],[988,0.12],[1568,0.5]])){ try{ if(navigator.vibrate) navigator.vibrate([150,80,150,80,500]); }catch(e){} } }
+  const cls=l=>l==="ok"?"ok":l==="bad"?"bad":l==="warn"?"warn":"";
+  const rows=(F.chips||[]).map(c=>`<div class="fs_row" data-code="${esc(c.code)}" style="margin:3px 0"><span class="chip ${cls(c.level)}">${esc(c.text)}</span>${c.detail?` <span class="small mut">${esc(c.detail)}</span>`:""}${c.next?`<br><span class="small"><b>다음:</b> ${esc(c.next)}</span>`:""}</div>`).join("");
+  const obs=(F.observations||[]).map(o=>`<tr><td>${o.n}</td><td>${o.reading?esc(String(o.reading[0]))+" ("+f(o.reading[1],2)+")":"판독 없음"}</td><td>${o.kind==="CATEGORY"?"시설 범주":o.kind==="ROOM"?"방 번호":"—"}</td><td>${o.usable===true?'<span class="chip ok">독립 관측</span>':o.usable===false?`<span class="chip warn">미사용</span> <span class="small mut">${esc(o.why_not||"")}</span>`:"—"}</td><td class="small mut">${esc(o.vlm||"")}</td></tr>`).join("");
+  el.innerHTML=`<h3 style="margin:0 0 6px">진행 상태</h3><div id="fs_chips">${rows}</div>`+(obs?`<div class="small" style="margin-top:6px" id="fs_counts">유효 독립 관측 <b>${F.n_valid_independent==null?0:F.n_valid_independent}</b> / 촬영 시도 ${F.n_attempts}</div><table class="small" id="fs_obs"><tr><th>#</th><th>판독</th><th>종류</th><th>사용</th><th>VLM</th></tr>${obs}</table>`:""); }
+function renderFinal(d,cs){ FIN.last=[d,cs]; const el=$("final_card"); if(!el) return; const X=(cs||{}).experiment||{}, FF=(cs||{}).final_fix||{};
+  const run=X.exp_id&&["RUNNING","PARTIAL","PAUSED"].includes(X.state);
+  if(!run||!FF.valid){ el.classList.add("hide"); el.innerHTML=""; el.style.cssText=""; return; }
+  const k=`${X.exp_id}:${FF.t_fix}`, PR=FF.presentation||{state:"FINAL_RESULT_VISIBLE"};
+  if(PR.state==="FINAL_PRESENTATION_PENDING"&&FIN.force!==k){ el.classList.remove("hide"); el.style.cssText="";
+    el.innerHTML=`<div class="note ok" id="final_pending" style="margin-bottom:10px"><b>최종 위치 검증 완료 — 팬틸트 작업이 끝나면 결과를 표시합니다.</b> <span class="small">현재: ${esc(PR.phase||PR.hw||"")}. 촬영·HOME을 먼저 마치세요.</span>${PR.phase==="HOME_NOT_CONFIRMED"?' <button class="sm" onclick="FIN.force=\''+k+'\';renderFinal(FIN.last[0],FIN.last[1])">HOME 미확인 — 결과 보기</button>':""}</div>`; return; }
+  if(FIN.seen!==k){ FIN.seen=k; if(sndOnce("FIX:"+k,[[784,0.15],[988,0.15],[1175,0.15],[1568,0.5]])){ try{ if(window.speechSynthesis){ const u=new SpeechSynthesisUtterance("위치추정이 완료되었습니다"); u.lang="ko-KR"; speechSynthesis.speak(u);} }catch(e){} } }
+  const L2=d.live2||{}, FO=L2.fix_overlay||{}, ok=FF.fix_overlay_ok&&FO.pose_m, E3H=((L2.e3||{}).hypotheses||[]).find(h=>h.id===FF.hypothesis);
+  const pos=ok?{fl:FO.floor,x:FO.pose_m[0],y:FO.pose_m[1],th:FO.heading_deg,src:"E7 보정 결과"}:(E3H&&E3H.pose_m?{fl:E3H.floor,x:E3H.pose_m[0],y:E3H.pose_m[1],th:E3H.heading_deg,src:"E3 가설 자세 (E7 점군 스냅샷 없음: "+(FF.fix_overlay_why||"")+")"}:null);
+  const c=FO.correction||{}, sc=FO.e7_scores||{}, t0=X.created_wall;
+  const rdn=((L2.semantic_estimate||{}).readings||[]).map(x=>x.label).join(" → ");
+  const CUR=L2.fix_current&&L2.fix_current.floor===(pos&&pos.fl)?L2.fix_current:null, BP=FO.pose_before_px;
+  const obs=(FF.used_observation_ids||[]).length?`의미정보 관측 ${(FF.used_observation_ids||[]).length}회 ${rdn?"["+esc(rdn)+"] ":""}(${(FF.used_observation_ids||[]).map(x=>esc(String(x).slice(-4))).join(", ")}) + LiDAR`:"LiDAR 구조 관측 (구조 기반)";
+  el.classList.remove("hide");
+  el.innerHTML=`<div class="card" style="margin-bottom:10px;border:2px solid var(--live);${FIN.closed===k?"":"max-width:900px;width:100%;max-height:94vh;overflow:auto"}"><h3 style="margin:0 0 6px;color:#8ff0bd;font-size:22px">최종 초기 전역 위치추정 완료 ${FIN.closed===k?"":`<button class="sm r" id="final_close" onclick="FIN.closed='${k}';renderFinal(FIN.last[0],FIN.last[1])">닫기</button>`}</h3>${FIN.closed===k?"":'<canvas id="fin_map" width="860" height="420" style="width:100%;background:#fff;border-radius:6px;margin-bottom:8px"></canvas>'}
+   <div class="kv" id="final_kv" style="font-size:16px">
+    <div>최종 층</div><div><b>${pos?pos.fl+"F":"—"}</b></div>
+    <div>현재 위치</div><div id="final_cur">${CUR?`x <b>${f(CUR.pose_m[0],2)}</b> m · y <b>${f(CUR.pose_m[1],2)}</b> m · θ <b>${f(CUR.heading_deg,1)}°</b> <span class="small mut">(픽셀 ${f(CUR.pose_px[0],0)}, ${f(CUR.pose_px[1],0)} · 검증된 변환 + FAST-LIO)</span>`:"계산 중"}</div>
+    <div>최종 위치 (검증 시각)</div><div>${pos?`x <b>${f(pos.x,2)}</b> m · y <b>${f(pos.y,2)}</b> m <span class="small mut">(구조지도 좌표${FO.pose_px?` · 픽셀 ${f(FO.pose_px[0],0)}, ${f(FO.pose_px[1],0)}`:""} · ${esc(pos.src)})</span>`:"자세 정보 없음 — 표시 안 함"}</div>
+    <div>최종 방향 θ (검증 시각)</div><div><b>${pos?f(pos.th,1)+"°":"—"}</b></div>
+    <div>보정 전 위치</div><div>${BP?`픽셀 ${f(BP[0],0)}, ${f(BP[1],0)}`:"—"}</div>
+    <div>E7 LiDAR 정합</div><div>통과 (GLOBAL_CONFIRMED) · 정합 점수 ${f(sc.alignment_score,3)} · 잔차 ${f(sc.residual_m,3)} · inlier ${f(sc.inlier_ratio,2)} · 2위 후보(${esc(sc.runner_up||"—")})와 차 ${f(sc.gap_m,3)}${ok?` · 벽 일치 ${f(100*FO.on_wall_frac_before,0)} → ${f(100*FO.on_wall_frac,0)} %`:""}</div>
+    <div>최초 위치 후보</div><div>${FF.first_candidate?`${FF.first_candidate.floor}F · 실험 시작 후 ${f(FF.first_candidate.t_s,0)} s (${esc(FF.first_candidate.leader||"")})`:"기록 없음"}</div>
+    <div>E7 보정량</div><div>${ok&&FO.correction?`Δx ${f(c.dx_m,2)} m · Δy ${f(c.dy_m,2)} m · Δθ ${f(c.dphi_deg,1)}° · 이동 ${f(FO.shift_m,2)} m`:esc(FO.correction_why||FF.fix_overlay_why||"—")}</div>
+    <div>확정 시각</div><div>${tstr(FF.t_fix)}</div>
+    <div>실제 최초 위치 확정시간</div><div><b>${f(FF.TTF_raw_s,1)} s</b></div>
+    <div>수동조작 기준 보정 최초 확정시간</div><div><b>${f(FF.TTF_normalized_s,1)} s</b><br><span class="small mut">진동 안정화 1초·수동 초점 3초를 가정한 분석값</span></div>
+    <div>위치 결정 경로</div><div>${esc(FF.path||"")} · ${obs}</div>
+    <div>위치 오차</div><div class="small mut">독립 평가용 GT가 없어 계산하지 않음 (시작 GT는 출발 위치이며 이 시점의 정답이 아님)</div></div>
+   <div class="small mut" style="margin-top:6px">위 지도: 파랑 = 현재 위치·방향, 초록 점 = 검증 시각의 최종 위치·방향, 주황 테두리 = E7 보정 전 위치, 점 = E7이 검증에 쓴 LiDAR 구조점을 최종 자세로 투영 (초록 벽 일치 · 빨강 불일치 · 회색 보정 전).</div></div>`;
+  el.style.cssText=FIN.closed===k?"":"position:fixed;inset:0;z-index:60;background:#000b;display:grid;place-items:center;padding:16px";
+  if(FIN.closed!==k){ const fm=$("fin_map"), lm=$("loc_map"); if(fm&&lm&&lm.width){ try{ fm.getContext("2d").drawImage(lm,0,0,fm.width,fm.height); }catch(e){} } } }
+/* 2026-10-28 (problem A): a result is ALWAYS visible — best structural candidate + why it is not a FIX, automatically at the time
+   budget (STRUCTURE 180 s, SEMANTIC 240 s from [실험 시작]; targets 120 / 240 s) and on demand. Never green, never "확정". */
+const RES={shown:null,open:false}; let LAST_D=null;
+function resClose(){ RES.open=false; $("resdlg").classList.add("hide"); }
+function resBudget(d){ const P=((d.live2||{}).e8_pair)||{}, sem=(P.observations||[]).length>0||!!((d.live2||{}).e6_manual);
+  return sem?{path:"SEMANTIC",target:240,max:240}:{path:"STRUCTURE",target:120,max:180}; }
+function resOpen(force){ /* r33: removed — the live map is the only pre-FIX view */ }
+/* R38: at 240 s (loc1) / 300 s (loc2) without a backend FIX the current judgement opens by itself: never green, never counted as a result, the title says 미확정. r33 had removed the older popup because it looked like a result;
+   this one states the floor, the rivals and why it is not fixed. A real FIX closes it and the final card takes over. */
+const FIXWHY_KO={NO_FLOOR_EVIDENCE:"2개 호실 관측 완료 — 위치 후보 생성 완료 — 층 식별 근거 추가 필요 (표지판의 학과·이름, 또는 층 안내판)",SEMANTIC_CANDIDATE_NOT_CONVERGED:"위치 후보의 LiDAR 정합 미수렴",LOCAL_AMBIGUITY:"LiDAR 정합이 지역적으로 모호",CROSSING_MARGIN:"벽 관통 진단이 후보에 불리",NO_E7_RESULT:"E7 결과 없음"};
+function fixWhyKo(L2){ const R=(L2.e7||{}).semantic_rule||{}, S=L2.e7_semantic_shadow||{}, b=(S.blocked_by||[]).concat(S.rejected_by||[]);
+  if(b.length) return b.map(x=>FIXWHY_KO[x]||(x.startsWith("PLATE_TEXT_CONFLICT")?"표지판 글자(학과·이름)가 호실 번호의 층과 맞지 않음 — 오독 의심":x.startsWith("ROOM_READINGS")?"서로 다른 호실 표지판 2개가 아직 없음":x)).join(" · ");
+  return R.why||(L2.e7||{}).why||""; }
+function resDetail(d,cs){ RES.open=true; RES.drawn=null; try{ renderResult(d||LAST_D,cs||CS); }catch(e){ console.error(e); } }
+function renderResult(d,cs){ LAST_D=d; if(!d||!cs) return; const X=cs.experiment||{}, FF=cs.final_fix||{}, L2=d.live2||{}, run=X.exp_id&&["RUNNING","PARTIAL","PAUSED"].includes(X.state);
+  if(!run||FF.valid){ if(RES.open) resClose(); return; }
+  const now=(d.meta||{}).server_wall||Date.now()/1000, el=X.created_wall?now-X.created_wall:0, AS=L2.auto_state||{};
+  if(!RES.open) return;
+  const H=((L2.e3||{}).hypotheses||[]).filter(h=>h.status!=="DROPPED").sort((a,b)=>(a.score??9)-(b.score??9)), SE=L2.semantic_estimate||{}, LG=L2.e7_long||{}, O=L2.loc_overlay||{}, E2=L2.e2||{};
+  const se=SE.best&&SE.best.pose_px?SE.best:null, h=se?Object.assign({},H.find(x=>x.id===se.id)||{},se):(H.find(x=>x.id===O.leader)||H[0]);
+  const ppm=(h&&h.ppm)||25, xm=h&&(h.pose_m?h.pose_m[0]:h.pose_px?h.pose_px[0]/ppm:null), ym=h&&(h.pose_m?h.pose_m[1]:h.pose_px?h.pose_px[1]/ppm:null);
+  $("res_title").firstChild.textContent="현재 최종 추정 결과 — 위치 미확정 "; $("res_title").style.color="#ffd28a";
+  $("res_sub").textContent=`실험 시작 후 ${f(el,0)} s · 최종 FIX 아님 · 성공으로 집계하지 않습니다 · 실험은 계속됩니다 · 자동 판단: ${AS.state_ko||"—"}`;
+  const rivals=(LG.close_floors||[]).length?LG.close_floors.map(x=>x+"F").join(", ")+` (차이 ${f(LG.next_gap_m,3)} m 이내)`:(LG.floors||[]).slice(1,4).map(x=>`${x.floor}F ${f(x.cost,3)}`).join(", ")||"정보 없음";
+  const why=AS.structure_class==="DISCRIMINATIVE"?(LG.why||"구조 비교 대기")+(L2.final_verify&&L2.final_verify.status!=="WATCHING"?` · 최종 검증: ${L2.final_verify.status} ${L2.final_verify.why||""}`:""):(fixWhyKo(L2)||((AS.assessment||{}).why)||"서로 다른 호실 표지판 판독이 아직 부족합니다");
+  const need=AS.structure_class==="DISCRIMINATIVE"?"전 층 비교에서 이 층이 공정한 경쟁 층보다 낮게 유지되어야 합니다":"새로운 구조적 특징(코너·교차로), 또는 표지판 2곳 이상의 호실 번호와 학과·이름·층 안내판 판독이 필요합니다";
+  $("res_kv").innerHTML=[["가장 유력한 층",h?`<b style="font-size:1.4em">${h.floor}F</b>`:"후보 없음"],["지도상 추정 위치",xm!=null?`x ${f(xm,1)} m · y ${f(ym,1)} m`:"—"],["추정 방향 θ",h&&h.heading_deg!=null?`${f(h.heading_deg,0)}°`:"—"],
+    ["LiDAR 정합",LG.leader_cost!=null?`전 경로 비용 ${f(LG.leader_cost,3)} m · 경로 ${f(LG.path_m,0)} m · 정밀 ${LG.floors_exact}/${LG.floors_total}층`:(O.on_wall_frac!=null?`벽 일치 ${f(100*O.on_wall_frac,0)} %`:"—")],
+    ["남아 있는 경쟁 층",rivals],["의미정보",(SE.readings||[]).length?(SE.readings||[]).map(x=>esc(x.label)).join(" → "):"판독 없음"],["확정 불가 이유",`<b>${esc(why)}</b>`],["추가로 필요한 것",esc(need)],["E2 정밀 탐색",`${(E2.floors_done||[]).length}/${E2.floors_total||"—"}층`],["E7 전 경로 비교",esc(LG.status||"아직 없음")+(LG.why?` — ${esc(LG.why)}`:"")],["위치 신뢰",(AS.pose_quality||{}).low?`<b style="color:var(--bad)">낮음</b>: ${esc(((AS.pose_quality||{}).reasons||[]).join(", "))}`:"표시 기준 충족 (최종 검증 아님)"]].map(([a,b])=>`<div>${a}</div><div>${b}</div>`).join("");
+  $("res_note").textContent="주황 = 현재 유력 위치(확정 아님) · 회색 = 같은 층 경쟁 후보. 시작 GT는 평가용이며 입력이 아닙니다.";
+  $("resdlg").classList.remove("hide"); if(h&&h.pose_px&&RES.drawn!==Math.floor(now/5)){ RES.drawn=Math.floor(now/5); drawResMap(d,h,H.filter(x=>x.id!==h.id)); } }
+/* 2026-10-31 LiDAR-on-map (state/loc_overlay.json from e34): the leader's newest structural LiDAR points in the SAME structure-map px
+   frame as pose_px (projection = E7's). green = within 0.3 m of a map wall, red = not; blue = after the E7 correction; dashed arrow =
+   pose shift by E7. Display only — never an input, never a FIX. */
+function drawOverlay(g,m,s,O,fl,ox,oy,dot){ if(!O||O.floor!==fl||!O.pts) return null; const k=m.factor*s; ox=ox||0; oy=oy||0; dot=dot||3;
+  const AC=O.accum; if(AC&&AC.pts&&AC.floor===fl) AC.pts.forEach((p,i)=>{ const dm=(AC.dist_m||[])[i]; g.fillStyle=dm!=null&&dm<=(AC.on_wall_m||0.3)?"rgba(47,133,90,0.30)":"rgba(197,48,48,0.28)"; g.fillRect(p[0]*k-ox-1,p[1]*k-oy-1,2,2); });
+  O.pts.forEach((p,i)=>{ const dm=(O.dist_m||[])[i]; g.fillStyle=dm!=null&&dm<=(O.on_wall_m||0.3)?"rgba(47,133,90,0.85)":"rgba(197,48,48,0.75)";
+    g.fillRect(p[0]*k-ox-dot/2,p[1]*k-oy-dot/2,dot,dot); });
+  const C=O.corrected; if(C&&C.pts){ g.fillStyle="rgba(43,108,176,0.75)"; C.pts.forEach(p=>g.fillRect(p[0]*k-ox-dot/3,p[1]*k-oy-dot/3,dot*2/3,dot*2/3));
+    const x0=O.pose_px[0]*k-ox, y0=O.pose_px[1]*k-oy, x1=C.pose_px[0]*k-ox, y1=C.pose_px[1]*k-oy; g.setLineDash([5,4]); g.strokeStyle="#2b6cb0"; g.lineWidth=2;
+    g.beginPath(); g.moveTo(x0,y0); g.lineTo(x1,y1); g.stroke(); g.setLineDash([]); const a=(C.heading_deg||0)*Math.PI/180;
+    g.strokeStyle="#2b6cb0"; g.lineWidth=3; g.beginPath(); g.arc(x1,y1,7,0,7); g.stroke(); g.beginPath(); g.moveTo(x1,y1); g.lineTo(x1+24*Math.cos(a),y1-24*Math.sin(a)); g.stroke(); }
+  return O; }
+function overlayLegend(O,fix){ if(!O||!O.pts) return O&&O.why?`<span class="mut">${esc(O.why)}</span>`:""; const C=O.corrected;
+  const AC=O.accum; const acc=AC&&AC.pts?`누적(옅은 점) ${AC.n_pts_total}개 · ${f(AC.span_s,0)} s · 벽 일치 ${f(100*AC.on_wall_frac,0)} %<br>최근(진한 점): `:"";
+  return acc+`<span style="color:#2f855a">■</span> 벽 0.3 m 이내 ${f(100*O.on_wall_frac,0)} % · <span style="color:#c53030">■</span> 지도 벽과 불일치 · 중앙 거리 ${f(O.median_dist_m,2)} m · 최근 ${f(O.window_s,0)} s LiDAR 구조점 ${O.pts.length}개 (${esc(O.leader)} 가설 변환)`+
+    (C?`<br><span style="color:#2b6cb0">■</span> E7 보정 후 (${esc(C.correction.source||"")}): Δx ${f(C.correction.dx_m,2)} m · Δy ${f(C.correction.dy_m,2)} m · Δθ ${f(C.correction.dphi_deg,1)}° · 이동 ${f(C.shift_m,2)} m · 벽 일치 ${f(100*C.on_wall_frac,0)} %`:"")+
+    `<br><span class="mut">${fix?"최종 FIX — E7 검증 완료":"잠정 위치 — 아직 검증되지 않음 (가설 변환으로 그린 점군, FIX 아님)"}</span>`; }
+const LOCMAP={t:0,full:false};
+/* R39: Top-K as E3 and the whole-path E7 comparison hold it now. Numbers only from the records. */
+function renderTopK(d){ const el=$("topk_box"); if(!el) return; const L2=(d||{}).live2||{}, A=L2.auto_state, LG=L2.e7_long||{}, E2=L2.e2||{}; if(!A){ el.innerHTML=""; return; } const a=A.assessment||{}, lf={}; (LG.floors||[]).forEach(x=>lf[x.floor]=x);
+  const rows=(a.floors||[]).map(x=>{ const l=lf[x.floor]; return `<tr><td>${x.floor}F</td><td>${f(x.score,3)}</td><td>${esc(x.status)} · ${x.n_kf}</td><td>${l?f(l.cost,3)+" ("+esc(l.stage)+(l.exact_done?"·정밀":"")+")":"—"}</td></tr>`; }).join("");
+  const hs=(A.topk_hist||[]).slice(-6).map(h=>`+${h.t}s ${h.floor||"—"}F 활성 ${h.n_active}/${h.n_alive}${h.gap!=null?" 차 "+f(h.gap,2):""}`).join(" → ");
+  el.innerHTML=`<b>Top-K 후보</b> 활성 ${a.n_active??0} / 보류 포함 ${a.n_alive??0} · 정밀 ${a.exact_done??0}/${a.floors_total??"—"}층 · 개략 ${a.coarse_done??0}층 · 반복 탐색 ${((E2.refresh||{}).n_passes)||0}회 · 판단 ${esc(A.structure_class)}<br><table class="small"><tr><th>층</th><th>E3 점수</th><th>상태·키프레임</th><th>E7 전 경로 비용</th></tr>${rows}</table><div class="mut">${esc(hs)}</div>`; }
+function locMapToggle(){ LOCMAP.full=!LOCMAP.full; LOCMAP.t=0; $("loc_map_mode").textContent=LOCMAP.full?"로봇 주변 확대":"전체 층 보기"; }
+function drawLocMap(d,cs){ const box=$("loc_map_box"); if(!box) return; const X=(cs||{}).experiment||{}, L2=(d||{}).live2||{}, O=L2.loc_overlay;
+  const run=X.exp_id&&["RUNNING","PARTIAL","PAUSED"].includes(X.state); box.classList.toggle("hide",!run); if(!run) return;
+  /* r33: after a backend FIX the SAME map shows the E7 snapshot (fix_overlay: the frames E7 evaluated, final pose + pose before) */
+  const FF=(cs||{}).final_fix||{}, FO=L2.fix_overlay||{}, fin=!!(FF.valid&&FF.fix_overlay_ok&&FO.pts&&FO.pose_px);
+  const H=(((L2.e3||{}).hypotheses)||[]).filter(h=>h.status==="ACTIVE"||h.status==="SUSPENDED").sort((a,b)=>(a.score??9)-(b.score??9));
+  const SEM=L2.semantic_estimate||{}, semOn=!fin&&SEM.best&&SEM.best.pose_px;
+  const h=fin?{id:FO.hypothesis,floor:FO.floor,pose_px:FO.pose_px,heading_deg:FO.heading_deg}:semOn?SEM.best:(O?(H.find(x=>x.id===O.leader)||H[0]):H[0]);
+  const CURF=fin&&L2.fix_current&&L2.fix_current.pose_px?L2.fix_current:null;
+  const ver=fin?"FIX:"+FO.e7_written_wall+":"+(CURF?Math.floor((CURF.written_wall||0)/3):""):(semOn?"SEM:"+SEM.written_wall:(O?O.written_wall:"none"))+":"+(h?h.id:"");
+  $("loc_map_empty").classList.toggle("hide",!!(h&&h.pose_px)); $("loc_map").classList.toggle("hide",!(h&&h.pose_px));
+  if(ver===LOCMAP.t) return; LOCMAP.t=ver;
+  $("loc_map_title").textContent=h?`${h.floor}F · ${fin?"최종 위치 (E7 보정)":semOn?`의미정보 기반 예상 위치 — ${(SEM.readings||[]).map(x=>x.label).join(" → ")} — 잠정`:"현재 가장 유력한 위치 — 잠정"}`:"";
+  $("loc_map_legend").innerHTML=fin?`E7 검증 LiDAR 구조점 ${FO.pts.length}개 (E7 시간창 ${f(FO.window_s,0)} s · 프레임 ${FO.n_frames}개)를 최종 자세로 투영: <span style="color:#2f855a">■</span> 벽 0.3 m 이내 ${f(100*FO.on_wall_frac,0)} % · <span style="color:#c53030">■</span> 불일치 · <span style="color:#999">■</span> 보정 전 (${f(100*FO.on_wall_frac_before,0)} %) · 보정 이동 ${f(FO.shift_m,2)} m`
+    :semOn?`<b>근거:</b> ${(SEM.basis||[]).map(esc).join(" · ")} · 갱신 ${f(SEM.age_s,1)} s 전 · ${esc(SEM.status==="MULTI_PLACE"?"장소 2곳 이상":"장소 1곳")} · 후보 ${SEM.n_candidates}개${(SEM.alternatives||[]).length?` · <b style="color:#718096">회색 = 떨어진 다른 후보</b>`:""} — 표지판 위치가 아니라 로봇 위치입니다. 최종 확정 아님.`
+    :(O?overlayLegend(O,false):'<span class="mut">LiDAR 정합 표시 대기</span>');
+  if(!h||!h.pose_px) return; const c=$("loc_map"), b=(L2.e2||{}).building||"kci", fl=h.floor, key=b+"/"+fl;
+  const go=()=>{ const m=fmeta[key]; if(!m) return; const ppm=(fin?FO.ppm:(O&&O.ppm))||25;
+    const iw=m.size[0]*m.factor, ih=m.size[1]*m.factor, half=Math.max(200,25*ppm*m.factor);
+    let sx=0, sy=0, sw=iw, sh=ih;
+    if(!LOCMAP.full){ sw=Math.min(iw,2*half); sh=Math.min(ih,sw*0.6); const ctr=CURF&&CURF.floor===fl?CURF.pose_px:h.pose_px; sx=Math.max(0,Math.min(iw-sw,ctr[0]*m.factor-sw/2)); sy=Math.max(0,Math.min(ih-sh,ctr[1]*m.factor-sh/2)); }
+    const s=c.width/sw; c.height=Math.round(sh*s); const ox=sx*s, oy=sy*s, k=m.factor*s, dot=LOCMAP.full?3:5;
+    const im=new Image(); im.onload=()=>{ const g=c.getContext("2d"); g.drawImage(im,sx,sy,sw,sh,0,0,c.width,c.height);
+      if(fin){ g.fillStyle="rgba(150,150,150,0.55)"; FO.pts_before.forEach(p=>g.fillRect(p[0]*k-ox-dot/3,p[1]*k-oy-dot/3,dot*2/3,dot*2/3));
+        FO.pts.forEach((p,i)=>{ const dm=(FO.dist_m||[])[i]; g.fillStyle=dm!=null&&dm<=(FO.on_wall_m||0.3)?"rgba(47,133,90,0.85)":"rgba(197,48,48,0.75)"; g.fillRect(p[0]*k-ox-dot/2,p[1]*k-oy-dot/2,dot,dot); });
+        const xb=FO.pose_before_px[0]*k-ox, yb=FO.pose_before_px[1]*k-oy; g.strokeStyle="#dd6b20"; g.lineWidth=3; g.beginPath(); g.arc(xb,yb,8,0,7); g.stroke();
+        g.setLineDash([5,4]); g.beginPath(); g.moveTo(xb,yb); g.lineTo(h.pose_px[0]*k-ox,h.pose_px[1]*k-oy); g.stroke(); g.setLineDash([]); }
+      else if(O&&O.leader===h.id) drawOverlay(g,m,s,O,fl,ox,oy,dot);
+      if(semOn) (SEM.alternatives||[]).filter(q=>q.floor===fl).forEach(q=>{ g.fillStyle="#8a95a3"; g.beginPath(); g.arc(q.pose_px[0]*k-ox,q.pose_px[1]*k-oy,7,0,7); g.fill(); });
+      const x=h.pose_px[0]*k-ox, y=h.pose_px[1]*k-oy, a=(h.heading_deg||0)*Math.PI/180, col=fin?"#2f855a":"#dd6b20";
+      g.fillStyle=col; g.beginPath(); g.arc(x,y,9,0,7); g.fill(); g.strokeStyle=col; g.lineWidth=4; g.beginPath(); g.moveTo(x,y); g.lineTo(x+28*Math.cos(a),y-28*Math.sin(a)); g.stroke();
+      if(CURF&&CURF.floor===fl){ const xc=CURF.pose_px[0]*k-ox, yc=CURF.pose_px[1]*k-oy, ac=(CURF.heading_deg||0)*Math.PI/180; g.fillStyle="#2b6cb0"; g.strokeStyle="#2b6cb0"; g.lineWidth=4; g.beginPath(); g.arc(xc,yc,9,0,7); g.fill(); g.beginPath(); g.moveTo(xc,yc); g.lineTo(xc+28*Math.cos(ac),yc-28*Math.sin(ac)); g.stroke(); } };
+    im.src=`/img/floor/${b}/${fl}.png`; };
+  if(fmeta[key]===undefined){ fmeta[key]=null; fetch(`/api/floor_meta?b=${b}&f=${fl}`).then(r=>r.ok?r.json():null).then(j=>{ fmeta[key]=j; LOCMAP.t=0; go(); }).catch(()=>{}); } else go(); }
+async function drawResMap(d,h,H){ const c=$("res_map"), b=(((d.live2||{}).e2)||{}).building||"kci", fl=h.floor, key=b+"/"+fl;
+  if(fmeta[key]===undefined){ fmeta[key]=null; try{ const r=await fetch(`/api/floor_meta?b=${b}&f=${fl}`); if(r.ok) fmeta[key]=await r.json(); }catch(e){} }
+  const m=fmeta[key]; if(!m||!h.pose_px) return; const s=c.width/(m.size[0]*m.factor); c.height=Math.round(m.size[1]*m.factor*s);
+  const im=new Image(); im.onload=()=>{ const g=c.getContext("2d"); g.drawImage(im,0,0,c.width,c.height);
+    H.slice(1,6).filter(x=>x.floor===fl&&x.pose_px).forEach(x=>{ g.fillStyle="#8a95a3"; g.beginPath(); g.arc(x.pose_px[0]*m.factor*s,x.pose_px[1]*m.factor*s,5,0,7); g.fill(); });
+    const x=h.pose_px[0]*m.factor*s, y=h.pose_px[1]*m.factor*s, a=(h.heading_deg||0)*Math.PI/180;
+    drawOverlay(g,m,s,(d.live2||{}).loc_overlay&&(d.live2||{}).loc_overlay.leader===h.id?(d.live2||{}).loc_overlay:null,fl);
+    g.fillStyle="#dd6b20"; g.beginPath(); g.arc(x,y,8,0,7); g.fill(); g.strokeStyle="#dd6b20"; g.lineWidth=4; g.beginPath(); g.moveTo(x,y); g.lineTo(x+26*Math.cos(a),y-26*Math.sin(a)); g.stroke(); };
+  im.src=`/img/floor/${b}/${fl}.png`; }
+/* 2026-10-28 PATH A operator flow: E4 CONFIDENT_GEOMETRY -> STRUCTURE_CONFIRMATION_STOP_REQUEST (its own sound, not the SigLIP
+   beep) -> operator stops -> E7 windows -> FIX popup (green) or the best-candidate panel (orange) with the reason. */
+/* 2026-10-30 MANUAL_SETTLE: E5 STOP -> stop confirmed -> the operator waits for the body shake to die down -> [진동 안정 확인 · 팬틸트 실행].
+   The E6 bridge re-checks stop / IMU / camera shake / approval B when it reads the command; this button never replaces approval B. */
+const SETTLE={busy_until:0,last_reply:null};
+const SETTLE_KO={WAITING_FOR_SETTLE_APPROVAL:"승인 대기",E6_APPROVED:"승인됨 — E6 실행",USER_CANCELLED:"취소됨",ROBOT_MOVED:"로봇 이동 — 무효",
+  SETTLE_APPROVAL_EXPIRED:"승인 시간 초과 — 무효 (자동 실행 안 함)",EXPERIMENT_ENDED:"실험 종료"};
+function settleCmd(action,oid){ if(Date.now()<SETTLE.busy_until) return;
+  if(action==="cancel"&&!confirm("이번 의미정보 획득을 취소합니까? 팬틸트는 움직이지 않습니다.")) return;
+  SETTLE.busy_until=Date.now()+4000; renderSettle(CS); act("e6_settle",{action:action,observation_id:oid}); }
+function renderSettle(cs){ const el=$("settle_panel"); if(!el) return; const V=(cs||{}).e6_settle;
+  if(!V||V.mode!=="MANUAL_SETTLE"){ el.innerHTML=""; return; }
+  const G=V.gate||{}, P=V.pending_stop||{}, B=V.approval_b||{}, live=G.live||{}, I=(live.imu&&live.imu.available)?live.imu:(V.imu||{});
+  const waiting=G.state==="WAITING_FOR_SETTLE_APPROVAL"&&(V.gate_age_s??99)<=5;
+  const oid=waiting?G.observation_id:(P.observation_id||G.observation_id);
+  const stopped=waiting||P.state==="STOPPED_TARGET_READY";
+  if(!oid||(!waiting&&!stopped&&!G.state)){ el.innerHTML=`<div class="note small" style="margin-bottom:10px">E6 실행 방식 MANUAL_SETTLE — E5 정지 요청 대기 중 · 팬틸트 사용 동의 ${B.valid?"유효":"없음 ("+esc(B.why||"")+")"}</div>`; return; }
+  const T=G.times||{}, tReq=T.t_stop_request||P.created_timestamp, now=Date.now()/1000;
+  const imuTxt=I.available?`자이로 RMS ${f(I.gyro_rms_dps,1)}°/s · 최대 ${f(I.gyro_peak_dps,1)}°/s · 가속도 변동 ${f(I.acc_std,2)} m/s² (${f(I.age_s,1)} s 전)`:esc(I.why||"측정 안 됨");
+  const st=live.stop||P.stop_check||{};
+  const ready=waiting&&live.stable&&B.valid&&V.e6_alive;
+  const rep=(G.replies||[]).slice(-1)[0];
+  const busy=Date.now()<SETTLE.busy_until;
+  const done=!waiting&&G.state&&G.state!=="WAITING_FOR_SETTLE_APPROVAL"&&G.observation_id===oid;
+  const head=done?`<div class="big">${esc(SETTLE_KO[G.state]||G.state)}</div><div class="small">${esc(G.why||"")}</div>`
+    :`<div class="big" style="font-size:26px">${waiting?"로봇 정지 완료. 진동이 안정되면 ① 조준 시작 버튼을 눌러주세요.":esc(V.message)}</div>${waiting?`<div class="small">${esc(V.message)} · 이 버튼은 조준만 시작합니다 (촬영은 ② 버튼)</div>`:""}`;
+  const why=!B.valid?`<div class="note bad" style="margin-top:8px"><b>이번 실험 팬틸트 사용 동의 없음 (${esc(B.why||"")})</b> — 팬틸트 구동 불가. 실험 시작 화면에서 '이번 실험에서 팬틸트 카메라 사용'에 동의하고 시작해야 합니다.</div>`
+    :!V.e6_alive?`<div class="note bad" style="margin-top:8px"><b>E6 브리지 실행 안 됨</b> — 팬틸트 구동 불가</div>`
+    :(waiting&&!live.stable)?`<div class="note warn" style="margin-top:8px">${esc(V.unstable_message)}<br><span class="small">${esc((live.unstable_reasons||[]).join(" · "))}</span></div>`:"";
+  el.innerHTML=`<div class="note ${done?(G.state==="E6_APPROVED"?"":"warn"):"warn"}" style="margin-bottom:10px;padding:14px 16px">${head}
+    <div class="kv small" style="margin-top:8px"><div>이벤트</div><div>${esc(oid)}</div>
+      <div>정지 요청 후</div><div>${tReq?f(now-tReq,0)+" s":"—"}</div>
+      <div>실제 정지</div><div>${stopped?"확인됨":"아직"} · 속도 ${f(st.speed_mps,2)} m/s · 회전 ${f(st.yaw_rate_dps,1)}°/s</div>
+      <div>본체 IMU 진동</div><div>${imuTxt}</div>
+      <div>카메라 흔들림</div><div>${live.camera_shake_px!=null?f(live.camera_shake_px,1)+" px":"측정 안 됨"}</div>
+      <div>팬틸트 사용 동의</div><div>${B.valid?"유효 (이번 실험)":"<b>없음</b> ("+esc(B.why||"")+")"}</div>
+      <div>E6 실행 준비</div><div>${ready?"<b>준비됨</b>":"아님"}${T.t_settle_ready?" · 소프트웨어 안정 판정 "+f(T.t_settle_ready-(tReq||T.t_settle_ready),1)+" s":""}</div>
+      ${rep?`<div>마지막 응답</div><div>${rep.accepted?"수락":"<b>거부</b>"} — ${esc(rep.why||"")}</div>`:""}</div>
+    ${why}
+    ${waiting||(!done&&stopped)?`<div class="e6mbtns" style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+      <button class="primary" style="font-size:22px;min-height:72px;flex:2 1 260px" ${(!waiting||busy||!B.valid)?"disabled":""} onclick="settleCmd('approve','${esc(oid)}')">① 진동 안정 확인 · 팬틸트 조준 시작</button>
+      <button style="font-size:18px;min-height:72px;flex:1 1 160px" ${(!waiting||busy)?"disabled":""} onclick="settleCmd('cancel','${esc(oid)}')">이번 의미정보 획득 취소</button></div>`:""}</div>`; }
+/* 2026-10-30 위치추정 진행 카드: E2 9-floor progress, E3 leader / Top-K, E4 reason, E7 / FIX — backend fields only, "—" when absent.
+   Every pose here is an unverified hypothesis until E7 GLOBAL_CONFIRMED. */
+const LOCP={exp:null,lead:[]};
+function renderLocProgress(d,cs){ try{ _renderLocProgress(d,cs); }catch(e){ const el=$("loc_progress"); if(el) el.innerHTML=`<div class="note warn small">위치추정 진행 표시 오류: ${esc(e.message)}</div>`; } }
+function _renderLocProgress(d,cs){ const el=$("loc_progress"); if(!el) return; const X=(cs||{}).experiment||{};
+  if(!X.exp_id||!["RUNNING","PARTIAL","PAUSED"].includes(X.state)){ el.innerHTML=""; return; }
+  const L2=(d||{}).live2||{}, E2=L2.e2||{}, E3=L2.e3||{}, E4=L2.e4||{}, E7=L2.e7||{}, SP=L2.structure_path||{}, M=E4.milestones||{};
+  const t0=X.created_wall, now=((d||{}).meta||{}).server_wall||Date.now()/1000, rel=t=>(t&&t0&&t>=t0)?f(t-t0,0)+" s":"—";
+  const asList=v=>Array.isArray(v)?v.map(Number):(v&&typeof v==="object"?Object.keys(v).map(Number):[]);   /* e2 floors_failed is a dict */
+  const tot=E2.floors_total||asList(E2.floors).length||9, ex=asList(E2.floors_done), co=asList((E2.coarse||{}).floors_done), pf=E2.per_floor||{}, failed=asList(E2.floors_failed);
+  const full=ex.length>=tot&&tot>0, fix=E7.global_decision==="GLOBAL_CONFIRMED";
+  const chips=(asList(E2.floors).length?asList(E2.floors):[1,2,3,4,5,6,7,8,9]).map(fl=>{ const st=(pf[String(fl)]||{}).status;
+    const k=failed.includes(fl)?["bad","실패"]:ex.includes(fl)?["ok","정밀"]:/RUN|FIT|OPEN/.test(st||"")?["warn","정밀 중"]:co.includes(fl)?["neu","개략만"]:["neu","대기"];
+    return `<span class="chip ${k[0]}" title="${esc(st||"")}">${fl}F ${k[1]}</span>`; }).join(" ");
+  const H=(E3.hypotheses||[]).filter(h=>h.status==="ACTIVE"||h.status==="SUSPENDED").sort((a,b)=>(a.score??9)-(b.score??9));
+  const top=H[0];
+  if(LOCP.exp!==X.exp_id){ LOCP.exp=X.exp_id; try{ LOCP.lead=JSON.parse(sessionStorage.getItem("locp_"+X.exp_id)||"[]"); }catch(e){ LOCP.lead=[]; } }
+  if(top&&(!LOCP.lead.length||LOCP.lead[LOCP.lead.length-1].id!==top.id)){ LOCP.lead.push({t:now,id:top.id,fl:top.floor,m:top.pose_m});
+    LOCP.lead=LOCP.lead.slice(-8); try{ sessionStorage.setItem("locp_"+X.exp_id,JSON.stringify(LOCP.lead)); }catch(e){} }
+  const pose=h=>h&&h.pose_m?`${h.floor}F · X ${f(h.pose_m[0],1)} · Y ${f(h.pose_m[1],1)} m · ${f(h.heading_deg,0)}°`:(h?`${h.floor}F · 위치 —`:"—");
+  const rows=H.slice(0,5).map((h,i)=>`<div>${i+1}</div><div>${esc(h.id)} · ${pose(h)} · 점수 ${f(h.score,3)}${i?` (차 ${f(h.score-top.score,3)})`:""} · KF ${h.n_kf??"—"}${h.status==="SUSPENDED"?" · 보류":""}</div>`).join("");
+  const e4ko=E4.display_ko||E4.state||"—", gap=(E4.metrics||{}).gap;
+  const SPk={RUNNING:"진행 중",NOT_CONFIRMED:"FIX 아님",SHADOW_WOULD_CONFIRM:"SHADOW 통과 (정책상 FIX 출력 안 함)",CONFIRMED:"확정"};
+  const e7txt=fix?`<b>최종 FIX — E7 검증 완료</b> · ${esc(E7.path||"")} · ${rel(E7.written_wall)}`:SP.status?`구조 기반 검증 ${esc(SPk[SP.status]||SP.status)} ${esc(SP.phase==="RETRO_VERIFY"?"(과거 관측 재검증 중)":"")} ${esc(SP.why||SP.need||"")}`:E7.global_decision?`${esc(E7.global_decision)} — ${esc(E7.why||"")}`:"실행 안 됨 (E4 확신 또는 의미 관측 필요)";
+  el.innerHTML=`<div class="card" style="margin-bottom:10px"><h3 style="margin:0 0 6px">위치추정 진행 ${fix?'<span class="chip ok">FIX</span>':'<span class="chip warn">추정 중 · 미확정</span>'}</h3>
+   <div class="kv small"><div>단계</div><div>${(()=>{ const G=L2.stage||{}, ev=G.evidence||{}; if(!G.stage) return "—";
+      const tone={FIXED:"ok",READY_FOR_VERIFY:"ok",VERIFYING:"warn",PROVISIONAL:"warn",AMBIGUOUS:"bad",UNRESOLVED:"bad",SEARCHING:"neu"}[G.stage]||"neu";
+      return `<span class="chip ${tone}">${esc(G.ko||G.stage)}</span> ${esc(G.why||"")}${ev.leader_hold_s!=null?` · 1위 유지 ${f(ev.leader_hold_s,0)} s`:""}${ev.leader_note?` · ${esc(ev.leader_note)}`:""}`; })()}</div>
+    <div>경과</div><div>${rel(now)} · 최초 후보 ${rel(M.first_hypothesis)} · 전 층 탐색 완료 ${full?rel(E2.finished_wall):"아직"} · FIX ${fix?rel(E7.written_wall):"없음"}</div>
+    <div>E2 탐색</div><div>정밀 <b>${ex.length}/${tot}</b> · 개략 ${co.length}/${tot}${E2.held?` · 보류: ${esc(E2.held)}`:""} · <span class="small mut">${esc((E2.device||"cpu").toUpperCase())} ${esc(String(E2.procs||""))}프로세스 · GPU E2: NOT_AUTHORIZED (상시 승인 범위 밖)</span><br>${chips}${(E2.regional||[]).length?`<br><span class="small">의미정보 지역 재탐색: ${(E2.regional||[]).map(r=>`${esc(String(r.floor))}F ${esc(r.status||"")}${r.n!=null?` 후보 ${r.n}`:""}${r.why_failed?` (${esc(String(r.why_failed).slice(0,60))})`:""}`).join(" · ")}</span>`:""}</div>
+    <div>현재 1위 (미확정)</div><div>${top?`<b>${pose(top)}</b> · ${esc(top.id)} · 점수 ${f(top.score,3)} (기하 불일치, 낮을수록 좋음)`:"후보 없음"}</div>
+    <div>Top-5</div><div class="kv" style="grid-template-columns:max-content 1fr;gap:2px 8px">${rows||"<div>—</div><div></div>"}</div>
+    <div>E3 가설</div><div>활성 ${E3.n_active??"—"} · 전체 ${E3.n_alive??"—"} · 키프레임 ${E3.n_keyframes??"—"}</div>
+    <div>1위 변화</div><div>${LOCP.lead.map(l=>`${rel(l.t)} ${esc(l.id)}`).join(" → ")||"—"} <span class="mut">(이 화면에서 본 변화)</span></div>
+    <div>E4 확신 시각</div><div>${SP.t_confident?`${rel(SP.started_wall)} (${esc(SP.leader||"")} · ${esc(String(SP.floor||""))}F)`:"아직 없음"}</div>
+    <div>의미정보 후보 복구</div><div>${(()=>{ const R1=L2.semantic_recovery_single, s1=R1?`판독 1개 기반 지역 E2: ${esc({REGION_REQUESTED:"요청됨",SKIPPED:"건너뜀",NOT_NEEDED:"불필요(일치 가설 있음)"}[R1.status]||R1.status)} ${R1.region?esc(String(R1.region.floor))+"F "+esc((R1.region.rooms||[]).join(",")):""} <span class="small mut">${esc(R1.why||"")} — 후보 생성만, FIX 아님</span><br>`:"";
+      const R=L2.semantic_recovery; if(!R) return s1+'<span class="mut">쌍 기반 요청 없음 (E8 CANDIDATE_MISSING 일 때만)</span>';
+      const ko={REGION_REQUESTED:"지역 E2 재탐색 요청됨",SKIPPED:"건너뜀",RESEARCH_FAILED:"재탐색 실패",RE_EVALUATED:"새 후보로 E8 재평가함",TIMEOUT:"시간 초과"}[R.status]||R.status;
+      return s1+`${esc(ko)} · ${esc(R.group_id||"")}${R.region?` · ${esc(String(R.region.floor))}F ${esc((R.region.rooms||[]).join(", "))}`:""}${R.verdict?` · 재평가 ${esc(R.verdict)}`:""}<br><span class="small mut">${esc(R.why||"")} — 새 후보는 FIX 가 아님 (E8·E7 통과 필요)</span>`; })()}</div>
+    <div>E4 판정</div><div><b>${esc(e4ko)}</b>${gap!=null?` · 1–2위 점수차 ${f(gap,3)} (확신 기준 ≥ 0.15)`:""}<br><span class="small mut">${esc((E4.reasons||[]).slice(0,2).join(" / "))}</span></div>
+    <div>E7 / FIX</div><div>${e7txt}</div>
+    <div>FIX 정책</div><div>${fixPolicyHtml(L2.fix_policy,X)}</div></div></div>`; }
+/* 2026-10-30 (staging): the FIX policy as reported by the RUNNING e34 (e7_policy.json + pid check). Anything but a fresh report
+   from a live e34 of THIS experiment is shown as "unconfirmed" (red), never as allowed. */
+function fixPolicyHtml(P,X){
+  if(!P) return `<span class="chip bad">확인 불가</span> 실행 모듈이 FIX 정책을 보고하지 않음 — 구조 기반 FIX가 차단됐다고 가정하지 말 것`;
+  const fresh=P.module_alive&&(!X.created_wall||(P.started_wall||0)>=X.created_wall-5);
+  if(!fresh) return `<span class="chip bad">확인 불가</span> 이전 실행의 기록 (pid ${esc(String(P.pid))}${P.module_alive?"":" 종료됨"})`;
+  const S=P.structure||{}, M=P.semantic||{};
+  const SM=S.mode||(S.enabled?"ENABLED":"OFF");
+  return `구조 기반: ${SM==="ENABLED"?'<span class="chip warn">FIX 허용</span>':SM==="SHADOW"?'<span class="chip neu">SHADOW — 검증·기록만, FIX 출력 안 함</span>':'<span class="chip ok">꺼짐</span>'} <span class="small">${esc(S.why||"")}</span><br>`+
+    `의미 기반: ${M.enabled?'<span class="chip neu">허용</span>':'<span class="chip ok">차단</span>'} <span class="small">${esc(M.scope||"")}</span><br>`+
+    `<span class="small mut">실행 모듈 e34 pid ${esc(String(P.pid))} · 코드 ${esc(String(S.code_sha256||"").slice(0,12))}</span>`; }
+function renderStruct(d){ const SP=((d.live2||{}).structure_path)||null, el=$("struct_banner"); if(!SP||!SP.leader){ el.innerHTML=""; return; }
+  const n=(SP.passes||[]).length;
+  if(SP.status==="RUNNING"&&SP.phase==="STOP_REQUESTED"){ sndOnce(SP.event_id,[[523,0.2],[392,0.2],[523,0.35]]); try{ if(navigator.vibrate) navigator.vibrate([200,100,200]); }catch(e){}
+    el.innerHTML=`<div class="note" style="margin-bottom:10px;font-size:1.25em;border-color:var(--live);background:var(--live-bg)"><b>구조 기반 위치 후보가 수렴하고 있습니다.</b> 최종 위치 확인을 위해 로봇을 정지해 주세요. <span class="small">${SP.floor}F ${esc(SP.leader)} · E4 차이 ${f(SP.e4_gap,3)} m</span></div>`; return; }
+  if(SP.status==="RUNNING"&&SP.phase==="RETRO_VERIFY"){ sndOnce(SP.event_id,[[392,0.2],[523,0.2],[659,0.3]]);
+    el.innerHTML=`<div class="note warn" style="margin-bottom:10px;font-size:1.15em"><b>E4 확신 — 구조 기반 검증 중 (아직 FIX 아님).</b> 확신 이전 관측을 재검증하고 있습니다. 정지하지 말고 안전한 경로로 천천히 계속 이동해 주세요 (교차로·개방부·폭이 바뀌는 곳 권장). <span class="small">${SP.floor}F ${esc(SP.leader)} · ${SP.mode==="ENABLED"?"FIX 허용":"SHADOW — FIX 출력 안 함"}</span></div>`; return; }
+  if(SP.status==="RUNNING"&&SP.phase==="VERIFY_WHILE_MOVING"){
+    const P=SP.passes||[], ev=SP.evidence||{};
+    el.innerHTML=`<div class="note warn" style="margin-bottom:10px;font-size:1.15em"><b>구조 기반 최종 검증 중 — 아직 FIX 아님. 정지하지 말고 천천히 계속 이동해 주세요</b> (교차로·개방부·폭이 바뀌는 곳 쪽 권장). <span class="small">${SP.floor}F ${esc(SP.leader)} · 평가한 30초 창 ${ev.n_eval??P.length} · 통과 구간 ${ev.run?"확보":"없음"} · 확신 후 일치 창 ${ev.live_agree??0} · ${esc(SP.need||"")}${SP.waiting_motion!=null?` · 최근 30초 이동 ${f(SP.waiting_motion,1)} m (부족)`:""} · ${SP.mode==="ENABLED"?"FIX 허용":"SHADOW — FIX 출력 안 함"}</span></div>`; return; }
+  if(SP.status==="SHADOW_WOULD_CONFIRM"){ el.innerHTML=""; return; }   /* r33: status line + details only (never a success banner) */
+  if(SP.status==="RUNNING") { el.innerHTML=`<div class="note warn" style="margin-bottom:10px"><b>구조 기반 최종 검증 중 — 천천히 계속 이동</b> E7 ${n}/2 · ${SP.floor}F ${esc(SP.leader)}${SP.stop_missing?` · ${esc(SP.stop_missing)}`:""}</div>`; return; }
+  if(SP.status==="NOT_CONFIRMED"){ el.innerHTML=""; return; }         /* r33: shown in the status line; no popup */
+  el.innerHTML=""; }
+function renderLive(d,cs){
+  stopAlert(((d.e5||{}).stop_request_ui));
+  const FL=flowState(d,cs); flowAlert(FL); renderFlowSteps(d,FL); renderE6M(d,cs); renderReady(cs); renderAim(d); renderNow(d,cs); renderFinal(d,cs); renderField(cs); renderStruct(d); renderSettle(cs); renderLocProgress(d,cs); try{ drawLocMap(d,cs); }catch(e){} try{ renderSemCard(d); }catch(e){}
+  { const G=cs.safety_guard; const p=(G&&G.pending||[]).filter(x=>x.condition!=="ODOMETRY_STALE"||x.held_s>=2);
+    $("safety_banner").innerHTML=p.length?`<div class="note bad" style="margin-bottom:10px"><b>안전 감시</b> ${p.map(x=>`${esc({THERMAL_SUSTAINED:"과열 지속",DEVICE_THROTTLING:"장치 스로틀링",MEMORY_LOW:"메모리 부족",SENSOR_FAULT:"센서 장애",ODOMETRY_STALE:"위치 입력 끊김"}[x.condition]||x.condition)} ${Math.max(0,Math.ceil(x.need_s-x.held_s))}초 후 실험 자동 종료`).join(" · ")}</div>`:""; }
+  { const SUa=((d.e5||{}).stop_request_ui||{}).active; const [k,t,sub]=(!SUa&&flowView(FL))||semState(d); $("sem_banner").innerHTML=`<div class="note ${k==="stop"?"bad":k==="warn"?"warn":""}" style="margin-bottom:10px;${k==="stop"?"font-size:1.35em;font-weight:700":""}"><b>${t}</b>${sub?` <span class="small">${sub}</span>`:""}</div>`; } const X=cs.experiment||{}, st=X.state, mods=cs.modules||{}, L=d.lio||{}, o=L.odom||{}, G=d.rgb||{}, E5=d.e5||{}, L2=d.live2||{}, E2=L2.e2, E3=L2.e3, E4=L2.e4;
+  const fl=(mods.fastlio||{}).exp||{}, odomOk=L.status==="OK"&&o.last_rx_age_s!=null&&o.last_rx_age_s<0.5;
+  const s1=fl.state==="RUNNING", s2=s1&&odomOk, moved=(o.path_m||0)>=1;
+  const steps=[["①","모듈 켜기",s1,!s1],["②","정지 상태 초기화",s2,s1&&!s2],["③","자유 주행",moved&&s2,s2]];
+  $("stepper").innerHTML=steps.map(([n,t,done,now])=>`<span class="${done?"done":(now?"now":"")}">${n} ${t}${done?" ✓":""}</span>`).join("");
+  $("b_pause").classList.toggle("hide",st==="PAUSED"); $("b_resume").classList.toggle("hide",st!=="PAUSED");
+  const busy=cs.job&&!cs.job.done; const mine=cs.you_own&&CONTROL; ["b_pause","b_resume","b_end"].forEach(i=>$(i).disabled=busy||!mine);
+  let note=""; if(!CONTROL) note=`<div class="note warn" style="margin-bottom:10px">이 기기는 보기 전용입니다. 제어는 허용된 태블릿(${esc((SESS.trusted_devices||[]).join(", "))})에서 합니다.</div>`;
+  else if(!cs.you_own) note=`<div class="note warn" style="margin-bottom:10px">다른 기기가 이 실험을 제어하고 있습니다. 보기만 가능합니다.</div>`;
+  if(st==="STARTING") note+=`<div class="note" style="margin-bottom:10px">모듈을 켜는 중입니다 — ${esc((cs.job&&cs.job.steps||[]).map(s=>s.module+(s.ok?" ✓":" ✗")).join(" → "))}. 로봇을 움직이지 마십시오.</div>`;
+  else if(!s2) note+=lioNote(L,o,s1,moved);
+  if(st==="PAUSED") note+=`<div class="note warn" style="margin-bottom:10px">분석이 일시정지되었습니다 (E2·E3 새 분석 보류, SigLIP 정지). FAST-LIO·지도 축적은 계속됩니다. 로봇은 조이스틱으로만 멈춥니다.</div>`;
+  const bad=Object.entries(mods).filter(([m,v])=>v.exp&&["FAILED","ENDED_UNEXPECTEDLY","REFUSED","STOP_FAILED"].includes(v.exp.state));
+  if(bad.length) note+=`<div class="note bad" style="margin-bottom:10px">${bad.map(([m,v])=>`<b>${m}</b> ${esc(KO.mod[v.exp.state]||v.exp.state)} — ${esc(failKo(v.exp.why).join(" · "))}`).join("<br>")}`+
+    (mine&&st!=="PAUSED"?`<div style="margin-top:8px"><button class="sm" onclick="act('start_missing')" ${busy?"disabled":""}>꺼진 모듈 다시 켜기 (승인·게이트 재확인)</button></div>`:"")+`</div>`;
+  { const B=((d.live2||{}).e6_bridge)||{}; if(!B.alive&&["OFF","REFUSED",undefined,null].includes(B.state)) note+=`<div class="note warn" style="margin-bottom:10px"><b>팬틸트(E6) 꺼짐</b> — ${esc(e6ReadyText(cs.e6_readiness))}. SigLIP 정지 요청 후에도 팬틸트·IMX477 은 움직이지 않습니다 (관측 전용).</div>`; }
+  $("live_note").innerHTML=note;
+  /* camera */
+  const I=E5.images||{}, sc=E5.scene||{};
+  let have=false, age=null;
+  if(CAM==="rgb"){ age=G.live_jpeg_age_s; have=setImg($("cam_img"),"/img/rgb.jpg",G.status&&!/NO_EXPERIMENT|UNAVAILABLE/.test(G.status)?age:null,"cam"); $("cam_cv").getContext("2d").clearRect(0,0,9999,9999);
+    $("cam_meta").textContent=G.color?`카메라 ${f(G.color.hz,1)} Hz`:"";
+    $("cam_cap").textContent=have?`프레임 ${G.last_seq??"—"} · 센서→서버 ${f(G.header_age_s,2)} s`:"";}
+  else { age=I.inference_age_s; have=setImg($("cam_img"),"/img/inference.jpg",age,"cam"); $("cam_meta").textContent=sc.siglip_infer_ms!=null?`추론 ${f(sc.siglip_infer_ms,0)} ms · 장면 ${f(sc.scene_ms,0)} ms`:"";
+    $("cam_cap").textContent=have?`SigLIP 후보 ${ (E5.regions||[]).length }개 · 녹색=후보, 회색=기각 · 점수는 유사도(확률 아님)`:""; }
+  const stale=age!=null&&age>2.5; const cb=$("cam_badge");
+  if(!have) pill(cb,"영상 없음","p-neu"); else if(stale) pill(cb,`지연 ${f(age,1)} s`,"p-warn"); else pill(cb,"실시간 "+f(age,1)+" s","p-live");
+  $("cam_veil").classList.toggle("hide",have&&!stale); $("cam_veil").textContent=!have?(CAM==="rgb"?"RGB 영상이 아직 없습니다 (센서 허브 확인)":"SigLIP 프레임이 없습니다 (SigLIP 꺼짐 또는 시작 중)"):`마지막 영상이 ${f(age,0)}초 전입니다 — 실시간 아님`;
+  /* map */
+  $("trk").classList.toggle("hide",MAPV!=="trk"); $("accmap").classList.toggle("hide",MAPV!=="map");
+  if(MAPV==="trk") drawTrack(trackView(L.track_raw,((L.odom||{}).last_raw||{}).yaw_deg)); else setImg($("accmap"),"/img/map.png",L.map_age_s,"map");
+  $("lio_line").innerHTML=L.status==="OK"?`<span class="pill p-live">위치 입력 정상</span> ${f(o.hz_10s,1)} Hz · 도착 간격 p95 ${f(o.interarrival_ms&&o.interarrival_ms.p95,0)} ms · 이동 ${f(o.path_m,1)} m`
+    :`<span class="pill ${L.status==="NO_EXPERIMENT"?"p-neu":"p-warn"}">${esc(LIO_KO[L.status]||L.status||"—")}</span> ${f(o.hz_10s,1)} Hz · 마지막 수신 ${f(o.last_rx_age_s,2)} s 전 ${esc(L.why||"")}`;
+  /* E4 / E2 summary */
+  const e4s=E4&&E4.status!=="STALE"?E4.state:null, k4=(e4s&&e4s!=="AMBIGUOUS"&&E4.candidates==="NO_CANDIDATES"&&e4s!=="INITIALIZING")?[(KO.e4[e4s]||[e4s])[0]+" · 후보 없음",(KO.e4[e4s]||[0,"p-neu"])[1],"후보가 없는 상태이며 위치 모호성과는 다릅니다"]:(KO.e4[e4s]||["E3/E4 대기","p-neu","E2 후보가 생기면 판단을 시작합니다"]);
+  $("e4_title").textContent=E4&&E4.status==="STALE"?"E4 갱신 끊김":k4[0]; $("e4_sub").textContent=E4&&E4.status==="STALE"?"E3/E4 처리가 멈췄습니다":k4[2];
+  const H=(E3&&E3.hypotheses)||[]; const best=H.length?H[0].score:null;
+  $("hyp_top").innerHTML=H.length?H.slice(0,3).map(h=>`<span class="fl">${h.floor}F</span><div class="bar"><i style="width:${Math.max(6,100*Math.min(1,(best||0.01)/Math.max(h.score,1e-6)))}%"></i></div><span class="mono">${f(h.score,3)}</span><span class="small">${h.status==="ACTIVE"?"활성":"보류"}</span><span class="small mut">${h.pose_m?f(h.pose_m[0],0)+", "+f(h.pose_m[1],0)+" m":""}</span>`).join("")
+    +`<span class="cap">상위 3개 후보 · 막대 = 1위 대비 일치 정도 · 숫자 = 기하 불일치 (m, 낮을수록 좋음)</span>`
+    :`<span class="small mut" style="grid-column:1/-1">아직 후보가 없습니다</span>`;
+  const e2s=E2?E2.status:"—", k2=KO.e2[e2s]||[e2s,"p-neu"];
+  $("e2_line").innerHTML=`<span class="pill ${k2[1]}">E2 · ${esc(k2[0])}</span> `+(E2&&E2.status==="RUNNING"?`${(E2.floors_done||[]).length}/${E2.floors_total||"—"}층 완료`:(E2&&E2.wait_note&&e2s==="WAITING_MOTION"?esc(E2.wait_note.replace(/WAITING_MOTION path ([\d.]+) m.*/,"최근 창 이동 $1 m")):""));
+  const need=(E4||{}).semantic||{}; $("sem_line").textContent=need.needed?`표지판 관측이 도움됨 (우선순위 ${need.priority})`+((need.targets||[])[0]?` · 예: ${need.targets[0].floor}F ${need.targets[0].label}`:""):"";
+  renderCand(d,cs); renderSem(d,cs);
+}
+/* Display-only transform of raw FAST-LIO odometry (2026-10-20 field analysis): camera_init = the IMU frame at start and that
+   IMU is mounted upside down (body-up in IMU (0.129,-0.256,-0.958)), so plotting raw x right / y up is a view from BELOW
+   (mirror): forward travel drew down-right and left turns drew clockwise. Robot forward in IMU = raw yaw - 47.3 deg
+   (extrinsic chain, e2_feed STATIC_BASE_LIDAR; measured -45.3 deg over 463 straight windows). The raw data, odom_link and the
+   E2/E3 frames are NOT changed. Views: up = un-mirrored, start heading up; robot = current heading up, robot at origin. */
+const TRK_A=-47.3*Math.PI/180;
+function trackView(tr,yawDeg){ if(!tr||TRKV==="raw") return tr;
+  const uv=p=>[p[0]*Math.cos(TRK_A)+p[1]*Math.sin(TRK_A), p[0]*Math.sin(TRK_A)-p[1]*Math.cos(TRK_A)];   // reflection: forward = +u
+  let q=tr.map(uv);
+  if(TRKV==="robot"&&q.length&&yawDeg!=null){ const h=-yawDeg*Math.PI/180, c=Math.cos(-h), s_=Math.sin(-h), o=q[q.length-1];
+    q=q.map(p=>{const du=p[0]-o[0], dv=p[1]-o[1]; return [c*du-s_*dv, s_*du+c*dv];}); }
+  return q.map(p=>[-p[1],p[0]]); }                     // screen: right = -v, up = +u
+/* 2026-10-21 EXP2: the drawn path seemed to "jump" while /Odometry was continuous — the box was re-fitted to the path on
+   every refresh. Display only: the box now only grows, in 5 m steps, and restarts with a new track (session or view change). */
+let TRK_BOX=null, TRK_KEY="";
+function trackBox(tr){ const xs=tr.map(p=>p[0]),ys=tr.map(p=>p[1]), q=5, fl=v=>Math.floor(v/q)*q, ce=v=>Math.ceil(v/q)*q;
+  const b=[fl(Math.min(...xs)-1),ce(Math.max(...xs)+1),fl(Math.min(...ys)-1),ce(Math.max(...ys)+1)];
+  const key=TRKV+":"+(tr.length?tr[0].map(v=>v.toFixed(2)).join(","):"");
+  if(TRK_BOX&&key===TRK_KEY&&TRKV!=="robot"){ TRK_BOX=[Math.min(TRK_BOX[0],b[0]),Math.max(TRK_BOX[1],b[1]),Math.min(TRK_BOX[2],b[2]),Math.max(TRK_BOX[3],b[3])]; }
+  else TRK_BOX=b;
+  TRK_KEY=key; return TRK_BOX; }
+function drawTrack(tr){const c=$("trk"),g=c.getContext("2d"); const W=c.clientWidth||640,H=c.clientHeight||360; c.width=W; c.height=H; g.fillStyle="#fff"; g.fillRect(0,0,W,H);
+  if(!tr||tr.length<2){g.fillStyle="#888";g.font="14px sans-serif";g.fillText("궤적 없음 — FAST-LIO 위치 입력 대기",14,26);return;}
+  let [x0,x1,y0,y1]=trackBox(tr);
+  const s=Math.min((W-20)/(x1-x0),(H-20)/(y1-y0)); const P=p=>[10+(p[0]-x0)*s+((W-20)-(x1-x0)*s)/2,H-10-(p[1]-y0)*s-((H-20)-(y1-y0)*s)/2];
+  g.strokeStyle="#e5e8ec"; g.lineWidth=1; const st=(x1-x0)>40?5:1;
+  for(let m=Math.ceil(x0/st)*st;m<=x1;m+=st){const a=P([m,y0]),b=P([m,y1]); g.beginPath(); g.moveTo(a[0],a[1]); g.lineTo(b[0],b[1]); g.stroke();}
+  for(let m=Math.ceil(y0/st)*st;m<=y1;m+=st){const a=P([x0,m]),b=P([x1,m]); g.beginPath(); g.moveTo(a[0],a[1]); g.lineTo(b[0],b[1]); g.stroke();}
+  g.strokeStyle="#d23b31"; g.lineWidth=2.5; g.beginPath(); tr.forEach((p,i)=>{const q=P(p); i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]);}); g.stroke();
+  const e=P(tr[tr.length-1]); g.fillStyle="#1a8f4f"; g.beginPath(); g.arc(e[0],e[1],6,0,7); g.fill(); g.fillStyle="#555"; g.font="12px sans-serif"; g.fillText(`격자 ${st} m · ${TRKV==="raw"?"FAST-LIO 원시 좌표 (위에서 본 그림 아님: 거울상)":TRKV==="robot"?"로봇 중심 · 현재 진행 방향 위":"시작 방향 위 (표시 변환만, 원시 데이터 불변)"} · 건물 지도 아님`,12,H-8);}
+
+/* ---------- candidates tab */
+const fmeta={};
+function coarseTxt(C,n){ if(!C||!C.enabled) return "꺼짐"; const done=(C.floors_done||[]).length, all=done+Object.keys(C.floors_failed||{}).length>=(n||99);
+  const rk=(C.ranking||[]).slice(0,5).map(x=>x+"F").join(" > ")||"—";
+  return `${all?"전 층 완료":"진행 "+done+"/"+(n||"—")+"층 (전체 아님)"} · ${esc(rk)}`+(C.all_floors_s_after_pass_start!=null?` · ${f(C.all_floors_s_after_pass_start,0)} s`:"")+` <span class="small mut">근사 순위 — 정밀 탐색 순서용, 탐색 완료로 세지 않음</span>`; }
+function renderCand(d,cs){ const L2=d.live2||{}, E2=L2.e2||{}, E3=L2.e3||{}, E4=L2.e4||{}, M=E4.metrics||{};
+  const k2=KO.e2[E2.status]||[E2.status||"—","p-neu"];
+  const kv=[["E2 상태",`<span class="pill ${k2[1]}">${esc(k2[0])}</span>`],["탐색 회차",E2.pass_id!=null?`${E2.pass_id}회 · ${(E2.floors_done||[]).length}/${E2.floors_total||"—"}층`+(E2.pass_sec?` · ${f(E2.pass_sec,0)} s`:""):"—"],
+    ["빠른 전층 예비 순위 (근사)",coarseTxt(E2.coarse,E2.floors_total)],
+    ["E4 판단",`${esc((KO.e4[E4.state]||[E4.state||"—"])[0])}`],["1위 · 경쟁",M.best_id?`${M.best_floor}F (${f(M.best_score,3)}) · ${M.competitor_floor!=null?M.competitor_floor+"F":"—"} 차이 ${f(M.gap,3)}`:"—"],
+    ["후보 수 (활성/보류)",E3.n_alive!=null?`${E3.n_alive} (${E3.n_active}/${E3.n_suspended})`:"—"],["키프레임",E3.n_keyframes!=null?`${E3.n_keyframes} · 처리 p95 ${f((E3.timing||{}).kf_ms_p95,0)} ms`:"—"],
+    ["판단 이유",esc((E4.reasons||[]).map(reasonKo).join(" · ")||"—")]];
+  $("cand_kv").innerHTML=kv.map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join("");
+  const H=E3.hypotheses||[];
+  $("cand_tbl").innerHTML="<tr><th>#</th><th>층</th><th>상태</th><th>불일치</th><th>1위와 차이</th><th>키프레임</th><th>위치 (m)</th><th>방향</th><th>위치 근거</th></tr>"+
+    (H.slice(0,15).map((h,i)=>`<tr><td>${i+1}</td><td><b>${h.floor}F</b></td><td>${h.status==="ACTIVE"?"활성":"보류"}</td><td>${f(h.score,3)}</td><td>${f(h.gap_to_best,3)}</td><td>${h.n_kf}</td><td>${h.pose_m?f(h.pose_m[0],1)+", "+f(h.pose_m[1],1):"—"}</td><td>${f(h.heading_deg,0)}°</td><td class="small">${(h.global_pose||{}).source==="GEOMETRY_CHECKED_KEYFRAME"?"LiDAR 확인":((h.global_pose||{}).source==="ODOM_PROPAGATED"?"오도메트리 전파 "+f((h.geometry||{}).odom_s_since_keyframe,1)+" s":"—")}</td></tr>`).join("")
+     ||`<tr><td colspan="9" class="mut">${E2.status==="WAITING_MOTION"?"이동이 더 필요합니다 — E2 가 아직 탐색하지 않았습니다":"아직 후보가 없습니다"}</td></tr>`);
+  $("e4_raw").innerHTML=(E4.reasons||[]).map(r=>`<li>${esc(r)}</li>`).join("")||"<li>—</li>";
+  $("e3_ev").innerHTML=(E3.events||[]).slice(-10).reverse().map(e=>`<tr><td>${new Date(e.wall*1000).toLocaleTimeString()}</td><td>${esc(e.kind)}</td><td class="mono">${esc(JSON.stringify(Object.fromEntries(Object.entries(e).filter(([k])=>k!=="wall"&&k!=="kind"))).slice(0,160))}</td></tr>`).join("");
+  if($("floor_det").open) drawFloors(E2,H); }
+async function drawFloors(E2,H){ const b=E2.building, el=$("floors"); if(!b||!E2.floors) {el.innerHTML='<div class="mut small">E2 정보 없음</div>';return;}
+  if(el.dataset.b!==b){el.dataset.b=b; el.innerHTML=E2.floors.map(fl=>`<figure style="margin:0" class="card"><figcaption class="small" id="fc${fl}"></figcaption><canvas id="fl${fl}" width="260" height="110" style="width:100%;background:#fff;border-radius:6px"></canvas></figure>`).join("");}
+  for(const fl of E2.floors){ const hs=H.filter(h=>h.floor===fl), pf=(E2.per_floor||{})[fl]||{};
+    $("fc"+fl).innerHTML=`<b>${fl}F</b> · ${esc((KO.e2[pf.status]||[pf.status||"대기"])[0])} · 후보 ${hs.length}`;
+    const k=b+"/"+fl; if(fmeta[k]===undefined){fmeta[k]=null; try{const r=await fetch(`/api/floor_meta?b=${b}&f=${fl}`); if(r.ok) fmeta[k]=await r.json();}catch(e){}}
+    const m=fmeta[k], c=$("fl"+fl); if(!m||!c) continue; const g=c.getContext("2d"); const s=260/(m.size[0]*m.factor); c.height=Math.round(m.size[1]*m.factor*s);
+    let im=c._im; if(!im){im=new Image(); im.src=`/img/floor/${b}/${fl}.png`; c._im=im;}
+    const paint=()=>{g.drawImage(im,0,0,c.width,c.height); hs.forEach((h,i)=>{if(!h.pose_px) return; const x=h.pose_px[0]*m.factor*s,y=h.pose_px[1]*m.factor*s; g.fillStyle=h.status==="ACTIVE"?"#d23b31":"#999"; g.beginPath(); g.arc(x,y,4,0,7); g.fill();});};
+    im.complete?paint():im.onload=paint; } }
+$("floor_det").addEventListener("toggle",()=>{ if(S) renderCand(S,CS); });
+
+/* ---------- semantic tab */
+/* FIX pose (E6 semantic + E7 geometry). The confirmed hypothesis keeps being propagated by FAST-LIO odometry inside the SAME
+   session (E3 global_pose); a session change drops every hypothesis, so a stale FIX can never be drawn as the current pose. */
+function precRow(d){ const P=((d.live2||{}).e6_precision_last)||null; if(!P) return "기록 없음";
+  const F=P.focus||{}, Q=P.image_quality||{}, ocr=(P.ocr_lines||[]).map(x=>`${esc(x[0])} (${f(x[1],2)})`).join(", ");
+  const fm=P.focus_mode==="MANUAL_FIXED_NO_MOTOR"?"수동 고정 초점(모터 없음)":(F.status?`자동 초점 ${esc(AFKO[F.status]||F.status)}${F.roi_source?" · "+esc(F.roi_source):""}${F.pulses!=null?" · 펄스 "+F.pulses:""}${F.best!=null?" · 최고 "+f(F.best,0)+" → 최종 "+f(F.final,0):""}`:"초점 생략/미실행");
+  return `${esc(P.observation_id||"")} · ${esc(P.status||"")} · ${fm} · ROI 선명도 ${f(Q.roi_laplacian_var,0)}${Q.ok?" (기준 통과)":" (기준 미달)"} · OCR ${ocr||"없음"}`; }
+function fixRow(d,E7d){ if(E7d.global_decision!=="GLOBAL_CONFIRMED") return E7d.global_decision?`없음 — ${esc(E7d.why||"")}`:"없음";
+  const id=E7d.semantic_hypothesis||E7d.best, h=((((d.live2||{}).e3)||{}).hypotheses||[]).find(x=>x.id===id);
+  if(!h) return `확정됐던 가설 ${esc(id||"—")} 이 현재 세션에 없음 — 현재 위치로 표시하지 않음`;
+  const gp=h.global_pose||{};
+  return `<b>${h.floor}F</b> · (${h.pose_m?f(h.pose_m[0],1)+", "+f(h.pose_m[1],1):"—"}) m · 방향 ${f(h.heading_deg,0)}° · ${esc(id)} · 관측 ${esc(E7d.observation_id||"—")} · `+
+         `${gp.source==="ODOM_PROPAGATED"?"FIX 후 오도메트리 전파":"LiDAR 확인"} · E7 ${f(E7d.e7_s,1)} s`; }
+/* E8 automatic E6 (2026-10-22): bridge state from live1_web e6_bridge; why THIS observation has no FIX from e7_observation. */
+const AFKO={AF_CONVERGED:"초점 맞음",AF_NOT_CONVERGED:"초점 미수렴",AF_BUDGET_EXHAUSTED:"초점 시간 초과",AF_DRIVE_LIMIT:"구동 한도 도달 — 이후 자동 초점 중단",
+  AF_NO_RESPONSE:"구동해도 영상 반응 없음 — 이후 자동 초점 중단",SUSPECTED_DRIVE_FAULT:"초점 구동 고장 의심 (잠금)",AF_BLOCKED_AFTER_FAULT:"고장 잠금으로 초점 차단",
+  FOCUS_COMM_ERROR:"Nano 통신 오류",AF_FRAME_STALE:"카메라 프레임 끊김",AF_TARGET_LOST:"표지판 놓침",AF_LOW_EXPOSURE:"노출 부족",AF_BUDGET_INFEASIBLE:"초점 시간 부족"};
+function e6Row(d){ const B=((d.live2||{}).e6_bridge)||{};
+  const m={OFF:"꺼짐 — 승인 B 없음 (정지는 관측 전용)",RUNNING:"자동 실행 중",BLOCKED:"중단됨 (장치·초점 이상)",BLOCKED_ENDED:"중단된 채 종료",LOST:"브리지 중단됨",REFUSED:"시작 거부",ENDED:"종료"}[B.state]||esc(B.state||"—");
+  const fm=B.focus_mode==="AUTO"?"학생 자동 초점":B.focus_mode==="MANUAL_FIXED_NO_MOTOR"?"수동 고정 초점(모터 없음)":"";
+  return `${m}${fm?" · "+fm:""}${B.n_observations!=null?" · 관측 "+B.n_observations+"건":""}${B.why?` <span class="small ${B.blocked?"":"mut"}">${esc(B.why)}</span>`:""}`; }
+function e7ObsRow(d){ const R=((d.live2||{}).e7_observation)||null; if(!R) return "—";
+  const k={E7_RUNNING:"E7 LiDAR 정합 중",E7_NOT_RUN:"E7 실행 안 함",CANDIDATE_MISSING:"대응 후보 없음 — E7 실행 안 함",GLOBAL_CONFIRMED:"FIX 확정",AMBIGUOUS:"FIX 아님 — 모호",
+    REJECTED:"FIX 아님 — 기하 불일치",MORE_OBSERVATION_REQUIRED:"FIX 아님 — 추가 관측 필요"}[R.outcome]||esc(R.outcome);
+  return `${esc(R.observation_id||"")} · <b>${k}</b> <span class="small">${esc(R.why||"")}</span>`; }
+/* E8 dual observation (e8_pair): A = 1st, B = 2nd (PROVISIONAL each), C = pair (REGION_CANDIDATE), D = E7 (FIX only if confirmed). */
+const E8KO={PAIR_IDLE:"대기",PAIR_READING:"판독 중 (이동 가능)",PAIR_CONSISTENCY_CHECK:"지도·주행거리 일관성 확인",REGION_CANDIDATE_READY:"후보 구역 선정",
+  E7_VERIFYING:"E7 LiDAR 검증 중",GLOBAL_FIX:"FIX 확정",MORE_OBSERVATION_REQUIRED:"추가 관측 필요",CANDIDATE_MISSING:"대응 후보 없음",NO_FIX:"FIX 없음",HOLD_ERROR:"정지 유지 — 오류"};
+function e8Ko(s){ if(!s) return "—"; const m=/^OBS(\d+)_(.*)$/.exec(s); if(m) return `${m[1]}차 `+({STOP_CONFIRMED:"정지 확인",E6_RUNNING:"촬영 중",CAPTURE_STORED:"이미지 저장",WAITING_RESUME:"저장됨 — 재출발 가능 (OCR 진행·1차 예상 위치)",SEARCHING:"다음 표지판 탐색"}[m[2]]||m[2]); return E8KO[s]||s; }
+function e8Obs(P,i){ const ev=P.evaluation||{}, o=(P.observations||[])[i]||((P.last_closed||{}).observations||[])[i];
+  if(!o) return `<div class="mut">${i+1}차 관측 없음</div>`;
+  const r=(ev.per_observation||[]).find(x=>x.observation_id===o.observation_id)||{}, pv=r.provisional;
+  const ocr=(o.ocr_lines||[]).map(x=>`${esc(x[0])}(${f(x[1],2)})`).join(", ");
+  return `<div style="display:flex;gap:8px;align-items:flex-start"><img src="/img/e8/${encodeURIComponent(o.observation_id)}.jpg" alt="" style="width:96px;border-radius:4px">
+    <div><b>${i+1}차</b> ${esc(o.observation_id)} · 선명도 ${f((o.image_quality||{}).roi_laplacian_var,0)} · sha ${esc(String(o.image_sha256||"").slice(0,10))}<br>
+    ${o.read?`OCR ${ocr||"없음"}${o.vlm?` · VLM ${esc(JSON.stringify(o.vlm).slice(0,60))}`:""} · 라벨 ${esc((r.labels||[]).map(x=>x[0]+" "+f(x[1],2)).join(", ")||"없음")}${r.why_not?` · <span class="mut">${esc(r.why_not)}</span>`:""}`:"OCR 진행 중 (백그라운드, 주행 중에도 계속)"}<br>
+    <span style="color:#d69e2e">●</span> ${i+1}차 예상 위치 (PROVISIONAL, 확정 아님): ${pv?`${pv.floor}F ${esc(pv.room||"")} · ${esc(pv.hypothesis)} · 잔차 ${f(pv.dist_m,1)} m`:"—"}${r.floor_likelihood?` · 층 가능도 ${esc(Object.entries(r.floor_likelihood).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,v])=>k+"F "+f(v,2)).join(", "))}`:""}${(o.reading||{}).ocr_s!=null?` · OCR ${f(o.reading.ocr_s,1)} s`:""}</div></div>`; }
+function e8Pair(P){ const ev=P.evaluation; if(!ev) return "두 관측 판독 후 표시";
+  const p=(ev.pairs||[]).slice(-1)[0]||{}, od=p.odometry||{}, c=(ev.candidates||[]);
+  return `<b>결합</b> ${esc(ev.verdict||"")} — ${esc(ev.why||"")}<br>Δx ${f(od.delta_x_m,2)} · Δy ${f(od.delta_y_m,2)} m · Δyaw ${f(od.delta_yaw_deg,0)}° · 순변위 ${f(od.net_displacement_m,1)} m · 경로 ${f(od.path_length_m,1)} m · 표지판 간 ${f(p.target_separation_m,1)} m${od.why?` · <span class="mut">${esc(od.why)}</span>`:""}<br>
+    후보: ${c.map(x=>`${x.floor}F ${esc(x.id)} (잔차 ${(x.residuals_m||[]).map(v=>f(v,1)).join("/")} m)`).join(", ")||"없음"} · 설명 가능 층 ${(ev.floors_explaining||[]).join(",")||"—"}`; }
+function e8E7(P,d){ const E=P.e7||(P.last_closed||{}).e7; if(!E) return "E7 미실행 (일관된 쌍 이후에만 실행)";
+  const B=E.best_result||{}, fix=E.global_decision==="GLOBAL_CONFIRMED";
+  const h=((((d||{}).live2||{}).e3||{}).hypotheses||[]).find(x=>x.id===(E.semantic_hypothesis||B.candidate_id));
+  const pose=h&&h.pose_m?`${h.floor}F (${f(h.pose_m[0],1)}, ${f(h.pose_m[1],1)}) m · 방향 ${f(h.heading_deg,0)}°`:(B.floor!=null?`${B.floor}F (현재 가설 없음)`:"—");
+  return `<b>E7 ${fix?"FIX":"FIX 아님"}</b> ${esc(E.global_decision||"")} — ${esc(E.why||"")}<br>${fix?"위치":"검증 대상"} ${pose} · 정합 점수 ${f(B.alignment_score,3)} · 잔차 ${f(B.residual_m,2)} m · inlier ${f(B.inlier_ratio,2)} · 경쟁 후보 차 ${f(B.gap_m,2)} m${E.fix_blocked?` · <span class="mut">차단: ${esc(E.fix_blocked.why||"")}</span>`:""}<br>사용 관측 ${esc((E.used_observation_ids||[]).join(", "))} · E7 ${f(E.e7_s,1)} s`; }
+function renderE8(d){ const P=((d.live2||{}).e8_pair)||null; if(!$("e8_box")) return;
+  if(!P){ $("e8_state").textContent="꺼짐"; $("e8_box").innerHTML="E8 이중 관측 정책 비활성 (단일 관측 진단 모드)"; return; }
+  $("e8_state").textContent=e8Ko(P.state);
+  $("e8_box").innerHTML=`<div class="note ${P.state==="HOLD_ERROR"?"bad":""}">${esc(e8Ko(P.state))} · ${esc(P.why||"")}</div>
+    <div style="margin:6px 0">A. ${e8Obs(P,0)}</div><div style="margin:6px 0">B. ${e8Obs(P,1)}</div>
+    <div style="margin:6px 0">C. ${e8Pair(P)}</div><div style="margin:6px 0">D. ${e8E7(P,d)}</div>
+    <div class="small"><span style="color:#d69e2e">●</span> 1·2차 예상 위치(미확정) <span style="color:#dd6b20">◆</span> 두 관측 융합 후보 <span style="color:#2f855a">●</span> E7 검증 완료 (FIX) <span style="color:#c53030">●</span> E7 검증 실패·불일치</div>
+    <div class="small mut">지도 자료: 표지판 물리 좌표·방향 ${(((P.evaluation||{}).map_data||{}).yaw_check)||"BLOCKED_BY_MAP_DATA"} — 호실 polygon·복도로만 검사 (1~3 은 미확정, E7 통과만 FIX)</div>`;
+  drawE8Map(d,P); }
+async function drawE8Map(d,P){ const c=$("e8_map"), ev=P.evaluation||{}, b=(((d.live2||{}).e2)||{}).building||"kci";
+  const pts=[], po=ev.per_observation||[];
+  po.slice(0,2).forEach((r,i)=>{ const pv=r.provisional; if(pv&&pv.target_px) pts.push({f:pv.floor,px:pv.target_px,k:i?"o2":"o1"}); });
+  const cand=(ev.candidates||[])[0]; if(cand&&cand.target_px) pts.push({f:cand.floor,px:cand.target_px,k:"fu"});
+  const E=P.e7||(P.last_closed||{}).e7, H=((((d.live2||{}).e3)||{}).hypotheses||[]);
+  if(E&&E.global_decision==="GLOBAL_CONFIRMED"){ const h=H.find(x=>x.id===E.semantic_hypothesis); if(h&&h.pose_px) pts.push({f:h.floor,px:h.pose_px,k:"fix"}); }
+  else if(E&&E.best_result&&E.best_result.pos_px&&E.best_result.floor!=null) pts.push({f:E.best_result.floor,px:E.best_result.pos_px,k:"rej"});
+  const g=c.getContext("2d"); if(!pts.length){ g.clearRect(0,0,c.width,c.height); return; }
+  const fl=pts[pts.length-1].f, k=b+"/"+fl; if(fmeta[k]===undefined){fmeta[k]=null; try{const r=await fetch(`/api/floor_meta?b=${b}&f=${fl}`); if(r.ok) fmeta[k]=await r.json();}catch(e){}}
+  const m=fmeta[k]; if(!m) return; const s=c.width/(m.size[0]*m.factor); c.height=Math.round(m.size[1]*m.factor*s);
+  let im=c._im; if(!im||c._fl!==k){im=new Image(); im.src=`/img/floor/${b}/${fl}.png`; c._im=im; c._fl=k;}
+  const col={o1:"#d69e2e",o2:"#d69e2e",fu:"#dd6b20",fix:"#2f855a",rej:"#c53030"};   /* 노랑 1·2차 예상, 주황 융합 후보, 초록 E7 확정, 빨강 E7 불일치 */
+  const paint=()=>{ g.drawImage(im,0,0,c.width,c.height); pts.filter(p=>p.f===fl).forEach(p=>{ const x=p.px[0]*m.factor*s,y=p.px[1]*m.factor*s;
+    g.fillStyle=col[p.k]; g.beginPath(); if(p.k==="fu"){g.moveTo(x,y-6);g.lineTo(x+6,y);g.lineTo(x,y+6);g.lineTo(x-6,y);} else g.arc(x,y,p.k==="fix"||p.k==="rej"?7:5,0,7); g.fill(); }); };
+  im.complete?paint():im.onload=paint; }
+function renderE6(d){ renderE8(d); const E6=((d.live2||{}).e6)||{}, E7d=((d.live2||{}).e7)||{}, o=E6.active||(E6.recent||[]).slice(-1)[0];
+  if(!$("e6_kv")) return;
+  if(!o){ $("e6_kv").innerHTML=`<div>E6 자동 실행</div><div>${e6Row(d)}</div><div>상태</div><div>관측 요청 없음</div>`; return; }
+  const ST={WAIT_STOP:"정지 대기 — 조이스틱으로 정지하십시오",STOPPED_TARGET_READY:"정지 확인 · 목표 계산됨",EXPIRED_NO_STOP:"정지 없이 만료",INVALID_INPUT:"입력 부족"}[o.state]||o.state;
+  const t=o.target_pose_at_stop||((o.target_pose_in_odom||{}).body_at_detection)||{}, sc=(o.semantic_map_candidates||[])[0];
+  $("e6_kv").innerHTML=[["관측",`${esc(o.observation_id)} · ${o.source==="OPERATOR_ASSISTED"?"운용자 지정":"자동 E5"}`],["상태",esc(ST)+(o.why?` <span class="small mut">${esc(o.why)}</span>`:"")],
+    ["정지 근거",o.stop_basis==="ALREADY_STATIONARY_AT_REQUEST"?"요청 시 이미 정지 상태":o.stop_basis==="OPERATOR_STOP_AFTER_REQUEST"?`요청 후 정지 · 검출→정지 ${f(o.detect_to_stop_path_m,2)} m / ${f(o.detect_to_stop_s,1)} s`:((o.stop_check||{}).why||"—")],
+    ["목표 (로봇 기준)",t.fwd!=null?`앞 ${f(t.fwd,2)} m · 왼쪽 ${f(t.left,2)} m`:"—"],["예상 팬·틸트",o.pan_target!=null?`팬 ${f(o.pan_target,1)}° · 틸트 ${f(o.tilt_target,1)}° (예측, 미구동)`:"정지 후 계산"],
+    ["의미지도 대응",sc?`${sc.floor}F ${esc(sc.nearest_label||"—")} (${f(sc.nearest_dist_m,1)} m)`:"—"],["좌표계",esc((o.camera_extrinsics||{}).status||"")],["E6 자동 실행",e6Row(d)],["전역 위치 (E6+E7)",E7d.global_decision?`${esc({GLOBAL_CONFIRMED:"확정 (의미+기하)",AMBIGUOUS:"모호 — 추가 관측",REJECTED:"기하 불일치 — 보류",MORE_OBSERVATION_REQUIRED:"추가 관측 필요"}[E7d.global_decision]||E7d.global_decision)}${E7d.source==="OPERATOR_ASSISTED"?" (운용자 보조)":""}`:"판단 전 (정밀 관측 없음)"],
+    ["정밀 관측 (초점·촬영·OCR)",precRow(d)],["이번 관측 FIX 판정",e7ObsRow(d)],["확정 위치",fixRow(d,E7d)]].map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join(""); }
+function renderSem(d,cs){ renderE6(d); const E5=d.e5||{}, I=E5.images||{}, sc=E5.scene||{}, E4=((d.live2||{}).e4)||{}, need=E4.semantic||{}, LK=E5.e4_link||{}, SR=((d.live2||{}).siglip_request)||{};
+  const have=setImg($("sem_img"),"/img/inference.jpg",I.inference_age_s,"sem"); const age=I.inference_age_s, stale=age!=null&&age>2.5;
+  if(!have) pill($("sem_badge"),"프레임 없음","p-neu"); else pill($("sem_badge"),stale?`지연 ${f(age,1)} s`:`최신 ${f(age,1)} s`,stale?"p-warn":"p-live");
+  $("sem_veil").classList.toggle("hide",have&&!stale); $("sem_veil").textContent=have?`마지막 추론 프레임이 ${f(age,0)}초 전입니다`:"SigLIP 이 꺼져 있거나 첫 추론을 기다리는 중입니다";
+  $("sem_meta").textContent=sc.siglip_infer_ms!=null?`추론 ${f(sc.siglip_infer_ms,0)} ms · 장면 ${f(sc.scene_ms,0)} ms · ${f(sc.n,0)}장`:"";
+  $("reg_tbl").innerHTML="<tr><th>후보</th><th>유사도</th><th>판정</th><th>사유</th></tr>"+((E5.regions||[]).slice(0,10).map(r=>`<tr><td>${esc(r.spot)}</td><td>${f(r.sim,3)}</td><td>${esc(/CANDIDATE/.test(r.display||"")?"후보":(/REJECT/.test(r.display||"")?"기각":r.display))}</td><td class="small mut">${esc((r.reasons||[]).slice(0,2).join(" · "))}</td></tr>`).join("")||`<tr><td colspan="4" class="mut">후보 없음</td></tr>`);
+  const fresh=E4.status&&E4.status!=="STALE";
+  $("need_kv").innerHTML=[["필요",fresh?(need.needed?"필요 — 우선순위 "+esc(need.priority):"지금은 필요 없음"):"E4 결과 없음 (판단하지 않음)"],["이유",fresh?esc(need.why||"—"):"—"],["대상 층",fresh?esc((need.floors_in_question||[]).join(", ")||"—"):"—"]].map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join("");
+  $("need_tbl").innerHTML=fresh&&(need.targets||[]).length?"<tr><th>층</th><th>대상</th><th>거리</th><th>방위</th><th>관측</th></tr>"+need.targets.slice(0,6).map(t=>`<tr><td>${t.floor}F</td><td>${esc(t.label)}</td><td>${f(t.dist_m,1)} m</td><td>${f(t.bearing_deg,0)}°</td><td>${esc({OBSERVABLE_NOW:"지금 보임",NEEDS_OPERATOR_TURN:"회전 필요",NO_LINE_OF_SIGHT:"가려짐"}[t.observability]||t.observability)}</td></tr>`).join(""):"";
+  const KP=d.siglip||{}, SGT=E5.live2_siglip_gate||{};
+  const sigTxt=KP.keeper==="PAUSED_THERMAL"?`열 보호로 일시정지 (${esc(KP.why)}) — 72 °C 미만에서 자동 재개`:KP.keeper==="PAUSED_MEMORY"?`메모리 보호로 일시정지 (${esc(KP.why)})`:
+    KP.keeper==="WAITING_RESOURCES"?`대기 — ${esc(KP.why)}`:(E5.siglip==="OK"?"동작":esc(E5.status||KP.status||"—"));
+  $("link_kv").innerHTML=[["SigLIP",sigTxt],["E4 → SigLIP 추론",SGT.mode===undefined?"—":({e4:"E4 요청 연동",eval:"평가 모드 (E4 연동 아님)",shadow:"기록만 (shadow)"}[SGT.mode]||SGT.mode)+` · 추론 ${SGT.scenes_infer||0} · 생략 ${SGT.scenes_skipped||0}`+(SGT.last?` · ${esc(SGT.last.why)}`:"")],["E4 → E5",LK.installed?`연결됨 · 우선 전송 ${LK.promoted_total||0}`:"연결 안 됨"],["E4 요청",SR.mode?`${SR.mode==="ACTIVE"?"관측 필요":"쉬어도 됨"} · ${esc(SR.last_event||"변화 없음")} #${esc(SR.seq)} · ${f(SR.age_s,1)} s 전`:"없음"],["팬틸트","명령 안 보냄 (shadow)"],["OCR / E6 / E7","미연결"]].map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join(""); }
+
+/* ---------- diagnostics + history */
+function renderDiag(d,cs){ if(TAB!=="rec") return; const ap=cs.approval||{}, sf=cs.safety||{};
+  $("diag_appr").innerHTML=[["실행 승인 A",ap.valid?"유효":"무효 — "+esc(ap.why)],["승인 파일",esc(ap.file||"—")],["승인 모듈",esc((ap.modules||[]).join(", "))],["부팅",esc(sf.boot_id)],["안전 규칙",esc(sf.rule)]].map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join("");
+  $("diag_mod").innerHTML="<tr><th>모듈</th><th>승인</th><th>실험 단계</th><th>프로세스</th><th>감독 상태</th><th>원문 사유</th></tr>"+Object.entries(cs.modules||{}).map(([m,v])=>{const e=v.exp||{};
+    return `<tr><td>${m}</td><td>${v.approved?"승인 "+(v.max_run_s?v.max_run_s+" s":""):"미승인"}</td><td>${esc(KO.mod[e.state]||e.state||"—")}</td><td>${v.alive?"실행 "+v.pid:"꺼짐"}</td><td class="small">${esc((v.sup||"")+" "+(v.end_reason||""))}</td><td class="mono">${esc((e.why||[]).join(" | "))}</td></tr>`;}).join("");
+  $("diag_job").textContent=cs.job?`최근 작업 ${cs.job.action} · ${cs.job.done?"완료":"진행 중"} · ${JSON.stringify(cs.job.result||{})}`:"";
+  const L=d.lio||{}, o=L.odom||{}, L2=d.live2||{}, sc=(d.e5||{}).scene||{}, T=((L2.e3||{}).timing)||{};
+  const rows=[["FAST-LIO /Odometry",`${f(o.hz_10s,2)} Hz · 도착 p95 ${f(o.interarrival_ms&&o.interarrival_ms.p95,0)} ms`,f(o.last_rx_age_s,2)],["E2 입력 표본",`p95 ${f(((L2.feed||{}).sample_ms_p95),0)} ms`,f((L2.ages||{}).feed,2)],
+    ["E3 키프레임",`p50 ${f(T.kf_ms_p50,0)} · p95 ${f(T.kf_ms_p95,0)} ms`,f((L2.ages||{}).e3,2)],["E4 판단",`${f(((L2.e4||{}).timing_ms||{}).e4,1)} ms`,f((L2.ages||{}).e4,2)],["SigLIP",`장면 ${f(sc.scene_ms,0)} · 추론 ${f(sc.siglip_infer_ms,0)} ms`,f((d.e5||{}).file_age_s,2)]];
+  $("diag_lat").innerHTML="<tr><th>단계</th><th>처리시간</th><th>입력 age (s)</th></tr>"+rows.map(r=>`<tr><td>${r[0]}</td><td class="mono">${r[1]}</td><td>${r[2]}</td></tr>`).join("");
+  $("diag_tl").innerHTML=(cs.timeline||[]).slice().reverse().map(t=>`<tr><td>${esc(t.time)}</td><td>${esc(t.kind)}</td><td class="mono small">${esc(JSON.stringify(Object.fromEntries(Object.entries(t).filter(([k])=>!["wall","time","kind"].includes(k)))).slice(0,180))}</td></tr>`).join(""); }
+async function loadHistory(){ const h=SNAPSHOT?getSync("/api/history"):await jget("/api/history"); if(!h) return;
+  $("hist_tbl").innerHTML="<tr><th>실험</th><th>건물</th><th>결과</th><th></th></tr>"+(h.experiments.map(x=>`<tr><td class="mono">${esc(x.exp_id)}<div class="small mut">${esc(x.created||"")}</div></td><td>${esc(x.building)}</td><td>${esc((KO.exp[x.state]||[x.state])[0])}<div class="small mut">${esc(x.end_reason||"")}</div></td><td><button class="sm" onclick="openHist('${esc(x.exp_id)}')">열기</button></td></tr>`).join("")||`<tr><td colspan="4" class="mut">지난 실험 없음</td></tr>`); }
+async function openHist(e){ const r=SNAPSHOT?getSync("/api/history/"+e):await jget("/api/history/"+e); if(!r) return; const x=r.experiment, s=x.summary||{};
+  $("hist_det").innerHTML=`<div class="note" style="margin-bottom:8px;border-color:var(--hist);background:var(--hist-bg)">${esc(x.exp_id)} — 지난 기록입니다. 현재 상태가 아닙니다.</div><div class="kv">`+
+   [["시작 / 종료",`${esc(s.created)} → ${esc(s.ended||"—")}`],["결과",`${esc((KO.exp[s.state]||[s.state])[0])} · ${esc(s.end_reason||"")}`],["E2",`${esc((KO.e2[x.e2.status]||[x.e2.status||"—"])[0])} · 회차 ${esc(x.e2.pass_id)} · 완료 ${esc((x.e2.floors_done||[]).length)}층 · 실패 ${esc(Object.keys(x.e2.floors_failed||{}).length)}층 · 후보 ${esc(x.e2.n_candidates)}`],
+    ["E4 마지막",`${esc((KO.e4[x.e4.state]||[x.e4.state||"—"])[0])} · ${esc((x.e4.reasons||[]).map(reasonKo).join(" · "))}`],["E3",`후보 ${esc(x.e3.alive)} · 키프레임 ${esc(x.e3.keyframes)}`],["GT / 검출 평가",`${x.gt?"있음":"없음"} / ${x.detections?"있음":"없음"}`]].map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join("")+"</div>"+
+   ((ev=>ev?`<details open><summary>평가 (GT 사용, 위치추정에는 미사용)</summary><div class="kv small">`+
+     [["시작 GT",ev.start_gt?`${ev.start_gt.floor}F ${esc(ev.start_gt.map_m)} m · ${Math.round(ev.start_gt.yaw_deg)}°`:"없음"],["종료 GT",ev.end_gt?`${ev.end_gt.floor}F ${esc(ev.end_gt.map_m)} m`:"없음"],
+      ["odom 순변위 / GT 순변위",`${esc(ev.odometry&&ev.odometry.net_displacement_m)} m / ${esc(ev.gt_net_displacement_m)} m`],
+      ["odom 기반 종료 참조",ev.odom_end_reference?`${esc(ev.odom_end_reference.map_m)} m · ${esc(ev.odom_end_reference.status)}${ev.odom_end_reference.error_vs_end_gt_m!=null?" · 종료 GT 와 "+ev.odom_end_reference.error_vs_end_gt_m+" m":""}`:"—"],
+      ["정답 층 순위 (E3 최종)",esc(ev.correct_floor_rank)],["Top-1/3/5 정답 층 포함",esc(JSON.stringify(ev.topk_contains_correct_floor||{}))],
+      ["최종 1위 후보",ev.final_candidates_top10&&ev.final_candidates_top10[0]?`${ev.final_candidates_top10[0].floor}F ${esc(ev.final_candidates_top10[0].map_m)} m${ev.final_candidates_top10[0].error_vs_end_gt_m!=null?" · 종료 GT 와 "+ev.final_candidates_top10[0].error_vs_end_gt_m+" m":""}`:"—"]]
+     .map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join("")+"</div></details>":"")(x.evaluation))+
+   `<details><summary>사건 기록 (${(x.timeline||[]).length})</summary><table class="small">${(x.timeline||[]).slice().reverse().map(t=>`<tr><td>${esc(t.time)}</td><td>${esc(t.kind)}</td><td class="mono">${esc(JSON.stringify(t).slice(0,140))}</td></tr>`).join("")}</table></details>`; }
+async function openAcct(){ $("acct").open=true; const r=await jget("/api/auth/devices"); if(!r) return;
+  $("dev_tbl").innerHTML="<tr><th>기기</th><th>마지막 사용</th><th>만료</th><th></th></tr>"+r.devices.map(x=>`<tr><td>${esc((x.ua||"").replace(/\(KHTML.*$/,"").slice(0,48))}${x.current?" <b>(이 기기)</b>":""}${x.kind==="legacy_token"?" · 토큰":""}</td><td>${x.last_seen?new Date(x.last_seen*1000).toLocaleString():"—"}</td><td>${new Date(x.expires*1000).toLocaleDateString()}</td><td>${x.current?"":`<button class="sm" onclick="revoke('${x.id}')">로그아웃</button>`}</td></tr>`).join(""); }
+async function revoke(id){ await jpost("/api/auth/revoke",{id}); openAcct(); }
+async function changePw(){ if($("pw_new").value!==$("pw_new2").value){$("pw_msg").textContent="새 비밀번호 두 개가 다릅니다"; return;}
+  const [c,j]=await jpost("/api/auth/password",{current:$("pw_cur").value,new:$("pw_new").value}); ["pw_cur","pw_new","pw_new2"].forEach(i=>$(i).value="");
+  if(c===200){CSRF=j.csrf; $("pw_msg").textContent="변경되었습니다. 다른 기기는 모두 로그아웃되었습니다."; openAcct();} else $("pw_msg").textContent=(j.why||"").replace("CURRENT_PASSWORD_WRONG","현재 비밀번호가 맞지 않습니다").replace(/^WEAK_PASSWORD: /,""); }
+
+/* ---------- GT viewer (zoom / pan / tap) */
+let gtMeta=null, gtImg=null, gtPt=null, gtDir=null, VZ={s:1,x:0,y:0};
+async function gtFloors(sync){ const b=$("gtb").value||"kci"; if(!$("gtb").options.length){$("gtb").innerHTML=["kci","sw","gong"].map(x=>`<option>${x}</option>`).join("");}
+  const j=sync||SNAPSHOT?getSync(`/api/gt/floors?b=${b}`):await jget(`/api/gt/floors?b=${b}`); if(!j) return;
+  $("gtf").innerHTML=j.floors.map(x=>`<option value="${x.floor}">${x.floor}F${x.semantic?"":" (의미지도 없음)"}</option>`).join(""); gtLoad(sync); }
+async function gtLoad(sync){ const b=$("gtb").value, fl=$("gtf").value; if(!fl) return; gtMeta=sync||SNAPSHOT?getSync(`/api/gt/meta?b=${b}&f=${fl}`):await jget(`/api/gt/meta?b=${b}&f=${fl}`); if(!gtMeta) return;
+  gtPt=gtDir=null; $("gt_save").disabled=true; gtImg=new Image(); gtImg.onload=()=>{gtFit();}; gtImg.src=`/img/sem/${b}/${fl}.png`;
+  if(SNAPSHOT){gtImg.style.display="none"; document.body.appendChild(gtImg);}   /* screenshot: the image delays the load event */
+  $("gt_info").textContent=`${gtMeta.semantic?"의미지도":"의미지도 없음 → 위치추정 평면도"} · 해상도 ${gtMeta.resolution_m_per_px?gtMeta.resolution_m_per_px.toFixed(4)+" m/px":"미상 (m 좌표 저장 안 함)"}`; gtList(); }
+function gtFit(){ const v=$("gtv"); if(!gtImg||!gtImg.width) return; const W=v.clientWidth,H=v.clientHeight; VZ.s=Math.min(W/gtImg.width,H/gtImg.height)*0.96; VZ.x=(W-gtImg.width*VZ.s)/2; VZ.y=(H-gtImg.height*VZ.s)/2; gtDraw(); }
+function gtZoom(k,cx,cy){ const v=$("gtv"); cx=cx??v.clientWidth/2; cy=cy??v.clientHeight/2; const s=Math.min(8,Math.max(0.05,VZ.s*k)); VZ.x=cx-(cx-VZ.x)*s/VZ.s; VZ.y=cy-(cy-VZ.y)*s/VZ.s; VZ.s=s; gtDraw(); }
+function gtDraw(){ const v=$("gtv"),c=$("gt_cv"); if(!gtImg||!gtImg.complete) return; const W=v.clientWidth,H=v.clientHeight,dp=devicePixelRatio||1; c.width=W*dp; c.height=H*dp; const g=c.getContext("2d"); g.setTransform(dp,0,0,dp,0,0);
+  g.fillStyle="#fff"; g.fillRect(0,0,W,H); g.drawImage(gtImg,VZ.x,VZ.y,gtImg.width*VZ.s,gtImg.height*VZ.s); const k=gtMeta.factor;
+  g.fillStyle="#1f5fbf"; g.font="12px sans-serif"; if(VZ.s>0.35) (gtMeta.labels||[]).forEach(l=>g.fillText(l.t,VZ.x+l.px[0]*k*VZ.s,VZ.y+l.px[1]*k*VZ.s));
+  if(gtPt){const x=VZ.x+gtPt[0]*k*VZ.s,y=VZ.y+gtPt[1]*k*VZ.s; g.strokeStyle="#d00"; g.lineWidth=3; g.beginPath(); g.arc(x,y,10,0,7); g.stroke(); g.beginPath(); g.arc(x,y,2.5,0,7); g.fillStyle="#d00"; g.fill();
+    if(gtDir){g.beginPath(); g.moveTo(x,y); g.lineTo(VZ.x+gtDir[0]*k*VZ.s,VZ.y+gtDir[1]*k*VZ.s); g.stroke();}} }
+(function(){ const v=$("gtv"); let pts=new Map(), moved=0, last=null, pinch=null;
+  v.addEventListener("pointerdown",e=>{v.setPointerCapture(e.pointerId); pts.set(e.pointerId,[e.offsetX,e.offsetY]); moved=0; last=[e.offsetX,e.offsetY]; if(pts.size===2){const p=[...pts.values()]; pinch=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]);}});
+  v.addEventListener("pointermove",e=>{ if(!pts.has(e.pointerId)) return; pts.set(e.pointerId,[e.offsetX,e.offsetY]);
+    if(pts.size===2&&pinch){const p=[...pts.values()], d=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]); gtZoom(d/pinch,(p[0][0]+p[1][0])/2,(p[0][1]+p[1][1])/2); pinch=d; moved=99; return;}
+    const dx=e.offsetX-last[0], dy=e.offsetY-last[1]; moved+=Math.abs(dx)+Math.abs(dy); if(moved>6){VZ.x+=dx; VZ.y+=dy; gtDraw();} last=[e.offsetX,e.offsetY];});
+  v.addEventListener("pointerup",e=>{ const was=pts.size; pts.delete(e.pointerId); if(pts.size<2) pinch=null; if(was!==1||moved>6||!gtMeta||e.target.closest(".vtools")) return;
+    const k=gtMeta.factor, p=[(e.offsetX-VZ.x)/VZ.s/k,(e.offsetY-VZ.y)/VZ.s/k];
+    if(p[0]<0||p[1]<0||p[0]>=gtMeta.size[0]||p[1]>=gtMeta.size[1]) return;
+    if(gtPt&&$("gtyaw").checked&&!gtDir) gtDir=p; else {gtPt=p; gtDir=null;} $("gt_save").disabled=!CONTROL; $("gt_msg").textContent=`선택 px (${p[0].toFixed(0)}, ${p[1].toFixed(0)})`+(gtDir?" · 방향 지정됨":""); gtDraw();});
+  v.addEventListener("wheel",e=>{e.preventDefault(); gtZoom(e.deltaY<0?1.15:1/1.15,e.offsetX,e.offsetY);},{passive:false});
+  window.addEventListener("resize",()=>{ if(TAB==="eval") gtFit(); });})();
+async function gtSave(){ if(!gtPt) return; const yaw=gtDir?Math.atan2(-(gtDir[1]-gtPt[1]),gtDir[0]-gtPt[0])*180/Math.PI:null;
+  if(GTK==="start"&&yaw==null){ $("gt_msg").innerHTML='<span class="pill p-warn">방향 필요</span> 두 번째 탭으로 로봇이 바라보는 방향을 지정하십시오'; return; }
+  const [c,j]=await jpost("/api/ctl/gt_save",{request_id:rid(),kind:GTK,building:$("gtb").value,floor:+$("gtf").value,px:gtPt[0],py:gtPt[1],yaw_deg:yaw,note:$("gtnote").value});
+  $("gt_msg").innerHTML=c===200?`<span class="pill p-live">저장됨</span> ${esc(j.gt.gt_id)}${j.pending?" · 다음 실험의 시작 위치 (평가 전용)":""}${j.evaluation?" · 평가 갱신됨":""}`:`<span class="pill p-bad">실패</span> ${esc(j.why||c)}`; gtList(); if(c===200) poll(); }
+async function gtList(){ const r=SNAPSHOT?getSync("/api/gt/list"):await jget("/api/gt/list"); if(!r) return; $("gt_list").innerHTML=r.rows.slice().reverse().map(g=>`<tr><td>${g.kind==="start"?"시작":"확인"}</td><td>${g.building} ${g.floor}F</td><td>${f(g.px,0)}, ${f(g.py,0)}</td><td>${esc((g.time||"").slice(11,19))}</td></tr>`).join("")||"<tr><td class='mut'>없음</td></tr>"; }
+
+/* ---------- detection evaluation */
+let snapMeta=null, snapImg=null, selReg=null, missPt=null;
+function renderDet(d,cs){ const active=ACT.includes((cs.experiment||{}).state), have=active&&((d.e5||{}).images||{}).inference_age_s!=null;
+  $("det_none").classList.toggle("hide",have||!!snapMeta); $("det_ui").classList.toggle("hide",!(have||snapMeta)); $("b_snap").disabled=!have||!CONTROL; }
+async function snap(){ const [c,j]=await jpost("/api/ctl/det_snapshot",{request_id:rid()}); if(c!==200){$("d_msg").textContent=j.why||c; return;}
+  snapMeta=j.snapshot; selReg=missPt=null; snapImg=new Image(); snapImg.onload=dDraw; snapImg.src=j.image; updLab();
+  $("d_msg").innerHTML=`${snapMeta.image_matches_status?'<span class="pill p-live">프레임·결과 일치</span>':'<span class="pill p-warn">프레임·결과 시각 차이</span>'} 프레임 ${esc(snapMeta.frame.hub_seq??snapMeta.frame.n_scene)}`; dList(); }
+function dDraw(){ const v=$("detv"), c=$("det_cv"); if(!snapImg) return; const W=v.clientWidth,H=v.clientHeight, s=Math.min(W/snapImg.width,H/snapImg.height), ox=(W-snapImg.width*s)/2, oy=(H-snapImg.height*s)/2; c.width=W; c.height=H; c._t=[s,ox,oy];
+  const g=c.getContext("2d"); g.fillStyle="#000"; g.fillRect(0,0,W,H); g.drawImage(snapImg,ox,oy,snapImg.width*s,snapImg.height*s);
+  (snapMeta.siglip.regions||[]).forEach((r,i)=>{const b=r.box||[]; if(b.length<4) return; g.lineWidth=i===selReg?4:2; g.strokeStyle=i===selReg?"#ffd24a":"#2fbf74"; g.strokeRect(ox+b[0]*s,oy+b[1]*s,(b[2]-b[0])*s,(b[3]-b[1])*s); g.fillStyle="#ffd24a"; g.font="14px sans-serif"; g.fillText(`#${i} ${r.sim!=null?r.sim.toFixed(3):""}`,ox+b[0]*s,oy+b[1]*s-4);});
+  if(missPt){g.strokeStyle="#ff5bd1"; g.lineWidth=3; g.beginPath(); g.arc(ox+missPt[0]*s,oy+missPt[1]*s,14,0,7); g.stroke();} }
+$("detv").addEventListener("click",e=>{ if(!snapMeta||e.target.closest(".vtools")) return; const [s,ox,oy]=$("det_cv")._t; const x=(e.offsetX-ox)/s, y=(e.offsetY-oy)/s;
+  const k=(snapMeta.siglip.regions||[]).findIndex(q=>q.box&&x>=q.box[0]&&x<=q.box[2]&&y>=q.box[1]&&y<=q.box[3]); if(k>=0){selReg=k; missPt=null;} else {missPt=[Math.round(x),Math.round(y)]; selReg=null;} updLab(); dDraw(); });
+function updLab(){ document.querySelectorAll("#det_ui [data-need]").forEach(b=>{const n=b.dataset.need; b.disabled=!CONTROL||!snapMeta||(n==="reg"&&selReg==null)||(n==="pt"&&!missPt);}); }
+async function dlab(l){ const [c,j]=await jpost("/api/ctl/det_label",{request_id:rid(),snap_id:snapMeta.snap_id,label:l,region_index:selReg,point:missPt,sign_text:$("d_text").value,note:$("d_note").value});
+  toast(c===200?({TP:"올바른 검출",FP:"오검출",MISSED:"놓친 표지판",AMBIGUOUS:"애매한 관측"}[l]+" 저장"):(j.why||c),c!==200); dList(); }
+async function dList(){ const r=await jget("/api/det/list"); if(!r) return; $("d_list").innerHTML=r.rows.slice().reverse().map(x=>`<tr><td>${esc({TP:"올바름",FP:"오검출",MISSED:"놓침",AMBIGUOUS:"애매"}[x.label])}</td><td class="mono">${esc(x.snap_id)}</td><td>${esc((x.time||"").slice(11,19))}</td></tr>`).join("")||"<tr><td class='mut'>없음</td></tr>"; }
+
+/* ---------- UI latency telemetry (server log only; no effect on robot processing) */
+const tele=[]; setInterval(()=>{ if(!tele.length||!CSRF||SNAPSHOT||!CONTROL) return; jpost("/api/ui/telemetry",{samples:tele.splice(0,50).map(t=>Object.assign(t,{viewport:innerWidth+"x"+innerHeight}))}); },10000);
+
+boot();
+</script>
+<div id="resdlg" class="hide" style="position:fixed;inset:0;z-index:59;background:#000b;display:grid;place-items:center;padding:16px">
+  <div class="card" style="max-width:860px;width:100%;max-height:92vh;overflow:auto;border:2px solid var(--warn)">
+    <h3 style="font-size:20px;color:#ffd28a" id="res_title">최선 위치 후보 — 추가 검증 필요 <span class="r"><button class="sm" id="res_continue" onclick="resClose()">닫기</button></span></h3>
+    <div class="small" id="res_sub" style="margin:-4px 0 10px"></div>
+    <div class="kv" id="res_kv" style="font-size:15px"></div>
+    <canvas id="res_map" width="820" height="300" style="width:100%;background:#fff;border-radius:6px;margin-top:10px"></canvas>
+    <div class="small mut" id="res_note" style="margin-top:6px">주황 = 최선 후보(확정 아님) · 회색 = 같은 층 경쟁 후보. 최종 위치(FIX)는 E7 LiDAR 검증 통과 시에만 초록으로 표시됩니다. FAST-LIO 궤적은 지도 변환이 확정되지 않아 그리지 않습니다.</div>
+  </div>
+</div>
+<div id="fixdlg" class="hide" style="position:fixed;inset:0;z-index:60;background:#000b;display:grid;place-items:center;padding:16px">
+  <div class="card" style="max-width:860px;width:100%;max-height:92vh;overflow:auto;border:2px solid var(--live)">
+    <h3 style="font-size:22px;color:#8ff0bd">초기 전역 위치추정 완료 <span class="r"><button class="sm" onclick="fixClose()">닫기</button></span></h3>
+    <div class="small" style="margin:-4px 0 10px">LiDAR 지도 정합 검증 통과 (E7)</div>
+    <div class="kv" id="fix_kv" style="font-size:16px"></div>
+    <canvas id="fix_map" width="820" height="300" style="width:100%;background:#fff;border-radius:6px;margin-top:10px"></canvas>
+    <div class="small mut" id="fix_note" style="margin-top:6px"></div>
+  </div>
+</div>
+<!-- PLATE_MERGE_BEGIN -->
+<script>
+/* 운용 탭 안의 명판 촬영 카드. 화면이 열리면 촬영 도구(iframe 의 data-port)를 한 번 불러오고, 도구가 보내는 상태로 상태 표시·카드 높이·알림을 바꾼다.
+   기존 화면의 변수는 쓰지 않는다(알림 띠 toast 만 있으면 빌려 쓴다). 여기서 오류가 나도 위 스크립트에는 영향이 없다. */
+(function(){
+  var fr=document.getElementById("plate_frame"); if(!fr) return;
+  var port=fr.getAttribute("data-port")||"8791", origin=location.protocol+"//"+location.hostname+":"+port;
+  var stat=document.getElementById("plate_stat"), idle=document.getElementById("plate_idle"), live=document.getElementById("run_live"), app=document.getElementById("app");
+  var loaded=false, last=0, since=0, ptOn=false;
+  function vis(el){ return !!el&&!el.classList.contains("hide"); }
+  function set(txt,cls){ if(stat){ stat.textContent=txt; stat.className="pill "+cls; } }
+  function load(force){ if(loaded&&!force) return; loaded=true; last=0; since=Date.now(); set("촬영 화면 불러오는 중","p-neu"); fr.src=origin+"/?embed=1&t="+Date.now(); }
+  var rl=document.getElementById("plate_reload"); if(rl) rl.onclick=function(){ load(true); };
+  var off=document.getElementById("plate_idle_off"); if(off) off.onclick=function(){ try{ fr.contentWindow.postMessage({src:"live2_main",cmd:"disconnect"},origin); }catch(e){} };
+  window.addEventListener("message",function(e){ var d=e.data; if(e.origin!==origin||!d||d.src!=="plate_site") return;
+    if(d.toast){ if(typeof window.toast==="function") window.toast(String(d.toast),d.ok===false); return; }
+    last=Date.now(); ptOn=!!d.pt;
+    if(typeof d.h==="number"&&d.h>200) fr.style.height=Math.ceil(d.h)+"px";
+    if(d.block) set(d.plate?"'팬틸트 카메라 사용'을 체크하지 않고 시작한 실험 — 팬틸트 사용 불가":"기존 자동 촬영이 팬틸트를 쓰는 실험 — 여기서는 사용 불가","p-warn");
+    else if(d.phase==="stop") set("정지 지점 — 조준·촬영","p-live");
+    else if(d.target) set("표지 기억됨"+(typeof d.remaining==="number"?" · 남은 거리 "+d.remaining.toFixed(1)+" m":""),"p-info");
+    else if(d.pt) set("팬틸트 연결됨 · 표지 찾는 중","p-live");
+    else set("표지 찾는 중 · 팬틸트 연결 전","p-neu"); });
+  setInterval(function(){
+    if(!loaded&&vis(app)) load(false);                               /* 로그인해 화면이 열리면 한 번 불러온다 */
+    var stale=loaded&&Date.now()-Math.max(last,since)>6000;
+    if(stale){ set(vis(live)?"촬영 도구를 불러오는 중 — 실험을 시작하면 함께 뜹니다":"촬영 도구 응답 없음 — 실험을 시작하면 함께 뜹니다","p-bad"); ptOn=false;
+      if(vis(live)&&Date.now()-since>8000) load(true); }           /* 실험이 도는 동안에는 뜰 때까지 8초마다 다시 불러온다 */
+    if(idle) idle.classList.toggle("hide",!(ptOn&&!vis(live)));     /* 실험이 끝났는데 팬틸트가 연결돼 있으면 준비 화면에 알린다 */
+  },1000);
+})();
+/* E6 = 명판 촬영 방식 (2026-11-15). 이 화면의 기존 코드는 예전 자동 촬영 프로그램만을 E6 로 알아서, 명판 촬영 방식으로 시작한 실험에서도
+   "팬틸트(E6) 꺼짐 … 움직이지 않습니다", "팬틸트 동의 없이 시작해 촬영할 수 없습니다", "로봇을 정지해 주세요", "촬영이 완료되었습니다" 를 보여 준다.
+   그리기 직전에 상태 자료를 이 방식에 맞게 고쳐 넘기고, 문구를 만드는 함수 네 개의 결과를 이 방식의 말로 바꾼다. 표시만 바꾼다(서버·기록·판정은 그대로).
+   이 방식인지는 콘솔이 남긴 E6 모듈 기록의 사유("명판 촬영 …")로 안다. 여기서 오류가 나면 원래 표시로 돌아간다. */
+(function(){
+  var ACTV=["STARTING","RUNNING","PARTIAL","PAUSED","STOPPING"];
+  var WHY="SigLIP 신호 → 정지 지점까지 이동 → 아래 명판 촬영 카드에서 조준·촬영";
+  var STEP={stopreq:"표지 인식·이동",stopok:"정지",aim:"조준(카드)",focus:"초점",cap:"촬영(카드)",home:"정면 복귀",resume:"이동 가능"}, step0=null;
+  function isPlate(cs){ try{ var X=(cs&&cs.experiment)||{}, w=((((cs&&cs.modules)||{}).e6||{}).exp||{}).why;
+    return ACTV.indexOf(X.state)>=0&&/명판 촬영/.test(Array.isArray(w)?w.join(" "):String(w||"")); }catch(e){ return false; } }
+  function steps(on){ try{ if(typeof FSTEPS==="undefined") return;
+    if(!step0){ step0={}; FSTEPS.forEach(function(x){ step0[x[0]]=x[1]; }); }
+    FSTEPS.forEach(function(x){ x[1]=(on&&STEP[x[0]])||step0[x[0]]; }); }catch(e){} }
+  function adapt(d,cs){ var on=isPlate(cs); P.on=on; steps(on);
+    if(on&&d){ var L=d.live2=d.live2||{};
+      L.e6_bridge={state:"PLATE_CASE1",alive:true,why:WHY,blocked:null,n_observations:((L.e8_pair||{}).observations||[]).length||null};
+      L.e6_mode={mode:"명판 촬영",ko:"E6 명판 촬영 방식 — 아래 카드에서 조준·촬영"};
+      if(L.auto_state) L.auto_state.needs_pantilt_consent=false; }
+    return on; }
+  /* 녹화 시간 알림 (2026-11-15): 실험을 시작한 뒤 5분이 지나면 알림음을 내고, 그 뒤에도 실험을 끝내지 않으면 1분마다 다시 낸다(모든 실험).
+     경과 시간은 서버 시각 - 실험 시작 시각. 소리는 이 화면의 알림음(🔊 단추로 켠 것)을 쓰고, 화면 위쪽에 알림 띠도 띄운다. */
+  var REC={id:null,k:-1,LIMIT_S:300,EVERY_S:60,n:0};
+  function rec(d,cs){ var X=(cs&&cs.experiment)||{};
+    if(["RUNNING","PARTIAL","PAUSED"].indexOf(X.state)<0||!X.created_wall){ REC.id=null; REC.k=-1; return false; }
+    if(REC.id!==X.exp_id){ REC.id=X.exp_id; REC.k=-1; }
+    var now=((d||{}).meta||{}).server_wall||Date.now()/1000, el=now-X.created_wall;
+    if(!(el>=REC.LIMIT_S)) return false;
+    var k=Math.floor((el-REC.LIMIT_S)/REC.EVERY_S);
+    if(k===REC.k) return false;
+    REC.k=k; REC.n++;
+    try{ if(typeof tone==="function") tone([[880,0.18],[660,0.18],[880,0.18],[660,0.32]]); }catch(e){}
+    try{ if(navigator.vibrate) navigator.vibrate([300,150,300]); }catch(e){}
+    try{ if(typeof window.toast==="function") window.toast("녹화 "+Math.floor(el/60)+"분 경과 — 실험을 종료하세요",true); }catch(e){}
+    return true; }
+  var P=window.__plateE6={on:false,adapt:adapt,rec:rec,REC:REC};
+  var _render=window.render, _e6Row=window.e6Row, _sem=window.semState, _flow=window.flowView;
+  if(typeof _render==="function") window.render=function(d,cs){ try{ adapt(d,cs); }catch(e){ P.on=false; } try{ rec(d,cs); }catch(e){} return _render.apply(this,arguments); };
+  if(typeof _e6Row==="function") window.e6Row=function(d){
+    try{ var B=((d&&d.live2)||{}).e6_bridge||{};
+      if(B.state==="PLATE_CASE1") return "명판 촬영 방식 동작 중"+(B.n_observations?" · 넘긴 사진 "+B.n_observations+"장":"")+' <span class="small mut">'+WHY+"</span>"; }catch(e){}
+    return _e6Row.apply(this,arguments); };
+  if(typeof _sem==="function") window.semState=function(d){ var r=_sem.apply(this,arguments);
+    try{ if(P.on&&r&&r[0]==="stop") return ["stop","표지판 후보가 발견되었습니다. 아래 명판 촬영 카드의 안내대로 이동하세요.",
+      String(r[2]||"").replace(" — 로봇은 조이스틱으로 정지","")+" — 정지 지점(표지 약 1 m 앞)에서 멈춘 뒤 카드에서 [조준 + 촬영]"]; }catch(e){}
+    return r; };
+  if(typeof _flow==="function") window.flowView=function(F){ var r=_flow.apply(this,arguments);
+    try{ if(P.on&&F&&r){ var id=String(F.observation_id||"");
+      if(F.state==="STOP_CONFIRMED"||F.state==="E6_OFF") return ["info","정지 확인됨 — 명판 촬영 카드의 안내를 따르세요 (정지 지점이면 [조준 + 촬영])",id+" · E6 명판 촬영 방식"];
+      if(F.state==="RESUME_READY") return ["info","이동할 수 있습니다 — 조준·촬영은 아래 명판 촬영 카드에서 합니다",id+" · E6 명판 촬영 방식"]; } }catch(e){}
+    return r; };
+})();
+</script>
+<!-- PLATE_MERGE_END -->
+</body>
+</html>

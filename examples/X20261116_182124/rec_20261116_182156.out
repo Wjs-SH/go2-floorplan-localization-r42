@@ -1,0 +1,2 @@
+LIVE1_FIELD_RECORDER out=/home/unitree/sci_ws/repairs/livefield2_20261018_151606/runtime/field_eval/20261116_182156 mark_page=0.0.0.0:8771
+{"status": "STOP_REQUESTED", "peak": {"temp": 77.031, "avail_min": 3722, "rss_mb": 16.55078125}, "escaped": [], "leftovers": []}

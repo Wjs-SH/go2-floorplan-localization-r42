@@ -1,0 +1,21 @@
+Error in sys.excepthook:
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/apport_python_hook.py", line 34, in apport_excepthook
+    def apport_excepthook(exc_type, exc_obj, exc_tb):
+KeyboardInterrupt
+
+Original exception was:
+Traceback (most recent call last):
+  File "/home/unitree/sci_ws/repairs/livefield2_20261018_151606/candidate/live2/e7_long.py", line 246, in <module>
+    worker(sys.argv[1])
+  File "/home/unitree/sci_ws/repairs/livefield2_20261018_151606/candidate/live2/e7_long.py", line 241, in worker
+    r = evaluate(st, e2, j["hyps"], j["t_end"], light) or {}
+  File "/home/unitree/sci_ws/repairs/livefield2_20261018_151606/candidate/live2/e7_long.py", line 84, in evaluate
+    r = E7.register(L, cl[i], fr)
+  File "/home/unitree/sci_ws/repairs/livefield2_20261018_151606/candidate/live2/e7_rematch.py", line 345, in register
+    costs = np.array([cost(light, rec, fr, d)[0] for d in grid])
+  File "/home/unitree/sci_ws/repairs/livefield2_20261018_151606/candidate/live2/e7_rematch.py", line 345, in <listcomp>
+    costs = np.array([cost(light, rec, fr, d)[0] for d in grid])
+  File "/home/unitree/sci_ws/repairs/livefield2_20261018_151606/candidate/live2/e7_rematch.py", line 337, in cost
+    e = np.minimum(sample_bilinear(light, mp, float(max(light.H, light.W))) / ppm, 5.0)
+KeyboardInterrupt

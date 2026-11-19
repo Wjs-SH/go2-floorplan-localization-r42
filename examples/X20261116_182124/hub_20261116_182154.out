@@ -1,0 +1,3 @@
+LIVE1_HUB subscribed=['/camera/color/image_raw', '/camera/aligned_depth_to_color/image_raw', '/camera/color/camera_info', '/Odometry'] refused={} hub=/dev/shm/live1_hub
+LIVE1_HUB end written=2266
+{"status": "STOP_REQUESTED", "peak": {"temp": 76.968, "avail_min": 3738, "rss_mb": 135.0078125}, "escaped": [], "leftovers": []}

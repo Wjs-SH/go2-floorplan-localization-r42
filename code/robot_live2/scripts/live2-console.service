@@ -1,0 +1,24 @@
+# LIVE-FIELD2 web console (UI V2, 8770) — user service. Starts ONLY the web console after boot (linger=yes), waits for
+# Tailscale, keeps the web up (watcher restarts the web if it ends). FAST-LIO / E2-E7 / SigLIP / pan-tilt / IMX477 /
+# HOME are never started by this unit: they start from the web [실험 시작] and need approval A for the current boot.
+# KillMode=process: stopping/restarting this unit never kills research modules started from the web.
+[Unit]
+Description=LIVE-FIELD2 web console 8770 (web only; no robot modules)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=/home/unitree/sci_ws/repairs/livefield2_20261018_151606
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/home/unitree/sci_ws/repairs/livefield2_20261018_151606/scripts/live2 serve
+ExecStop=/home/unitree/sci_ws/repairs/livefield2_20261018_151606/scripts/live2 _svc_stop
+KillMode=process
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=60
+
+[Install]
+WantedBy=default.target

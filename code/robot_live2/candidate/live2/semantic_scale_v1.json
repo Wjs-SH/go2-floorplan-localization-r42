@@ -1,0 +1,11 @@
+{
+ "kind": "LIVE2_SEMANTIC_SCALE_OVERRIDE",
+ "version": "v1 2026-10-30",
+ "note": "Separate metadata; the semantic map files are NOT modified. px/m of the shared floor-plan image (structure map = semantic map pixel frame). Source: stacked stair/elevator cores, 7F/8F reference (reports/e7_scale_audit_20261030_1600/MAP_SCALE_AUDIT.md). ESTIMATED, not surveyed: field segments M1-M5 pending. Only floors whose semantic map_meta differs by >= 9 % are overridden.",
+ "floors": {
+  "2": {"px_per_m": 24.83, "status": "ESTIMATED_CORE_STACK", "semantic_map_px_per_m": 27.27, "rel_unc": 0.05},
+  "3": {"px_per_m": 28.82, "status": "ESTIMATED_CORE_STACK", "semantic_map_px_per_m": 22.42, "rel_unc": 0.05},
+  "4": {"px_per_m": 23.96, "status": "ESTIMATED_CORE_STACK", "semantic_map_px_per_m": 17.27, "rel_unc": 0.05},
+  "5": {"px_per_m": 31.40, "status": "ESTIMATED_CORE_STACK", "semantic_map_px_per_m": 26.67, "rel_unc": 0.05}
+ }
+}

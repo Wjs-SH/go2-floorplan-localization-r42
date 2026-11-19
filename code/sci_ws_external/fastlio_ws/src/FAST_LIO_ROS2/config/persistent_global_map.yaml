@@ -1,0 +1,28 @@
+persistent_global_map:
+  ros__parameters:
+    input_topic: "/cloud_registered"
+    output_topic: "/Laser_map_persistent"
+    fixed_frame: "camera_init"
+
+    # 0.12 m is a practical starting point for 10–40 minute operation.
+    # Reduce to 0.08–0.10 m only after confirming memory and thermal margin.
+    voxel_size: 0.12
+
+    # Publish the complete persistent map every 10 seconds.
+    # Internal accumulation still runs on every accepted scan.
+    publish_hz: 0.1
+
+    # 1 means every registered scan. Increase to 2 only if the accumulator
+    # itself becomes a measurable CPU bottleneck.
+    update_stride: 1
+
+    # Hard memory guard. Old voxels are never deleted. When the limit is
+    # reached, only previously unseen voxels are rejected.
+    max_voxels: 2000000
+
+    # Prevent per-voxel counters and accumulated sums from growing forever.
+    max_samples_per_voxel: 100
+
+    log_interval_sec: 10.0
+
+    save_path: "/home/unitree/go2_ws/PCD/fastlio_persistent_map.pcd"

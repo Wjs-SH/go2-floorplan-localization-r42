@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LIVE-FIELD2 현장 패널</title>
+<style>
+:root{--bg:#111418;--card:#1b2027;--fg:#e6e9ee;--mut:#9aa4b2;--ok:#2fb36d;--warn:#e0a526;--bad:#e05252;--na:#6b7380;--line:#2b323c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,"Noto Sans KR",sans-serif}
+header{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+header h1{font-size:17px;margin:0}#banner{font-weight:700;padding:2px 10px;border-radius:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;padding:12px 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0}
+.card h2{font-size:14px;margin:0 0 8px;color:var(--mut);letter-spacing:.04em}
+.st{display:inline-block;padding:1px 8px;border-radius:4px;font-weight:700;font-size:12px}
+.OK{background:var(--ok);color:#06210f}.WARN{background:var(--warn);color:#2a1d00}.BAD{background:var(--bad);color:#fff}.NA{background:var(--na);color:#fff}
+table{border-collapse:collapse;width:100%;font-size:12px}td,th{border-bottom:1px solid var(--line);padding:3px 4px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:500}.mono{font-family:ui-monospace,monospace;font-size:12px}
+img{max-width:100%;border-radius:4px;background:#000;display:block}.cap{color:var(--mut);font-size:12px;margin:4px 0}
+#stopui{font-size:22px;font-weight:800;text-align:center;padding:14px;border-radius:6px;margin:6px 0}
+canvas{width:100%;background:#fff;border-radius:4px}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:2px 10px;font-size:13px}.kv div:nth-child(odd){color:var(--mut)}
+.wide{grid-column:1/-1}#gp{display:flex;flex-wrap:wrap;gap:18px;align-items:center}#gp .big{font-size:26px;font-weight:800}
+#e4big{font-size:20px;padding:4px 14px}.floors{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.floors figure{margin:0;background:#0d1014;border:1px solid var(--line);border-radius:6px;padding:6px}
+.floors figcaption{font-size:12px;color:var(--mut);margin-bottom:4px}.floors canvas{background:#fff}
+#hist{height:170px}
+button{background:#2b3a4f;color:var(--fg);border:1px solid #3d4f69;border-radius:5px;padding:6px 12px;font-weight:600;cursor:pointer;margin:2px}
+button:disabled{opacity:.4;cursor:not-allowed}button.danger{background:#6b1f1f;border-color:#a33}button.go{background:#1f5b37;border-color:#2fb36d}
+input,select{background:#0d1014;color:var(--fg);border:1px solid var(--line);border-radius:4px;padding:5px}
+#ctl{margin:12px 16px 0;border-color:#3d4f69}#ctlmsg{min-height:20px;font-weight:600}.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0}
+#gtc,#detc{width:100%;background:#fff;cursor:crosshair}.reasons{margin:4px 0 0 18px;padding:0;font-size:13px}.small{font-size:11px;color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+  <h1>LIVE-FIELD2 현장 패널</h1><span id="banner" class="st NA">연결 중</span>
+  <span class="mono" id="hdr"></span>
+</header>
+<section class="card" id="ctl"><h2>실험 제어 · 운용자 (허용된 작업만 · 로봇 이동 명령 없음)</h2>
+  <div class="row" id="loginrow"><input id="tok" type="password" placeholder="운용자 토큰" autocomplete="off" style="width:220px">
+    <button onclick="login()">로그인</button><span class="small" id="tokhint"></span></div>
+  <div class="row" id="ctlrow" style="display:none">
+    <span>실험 <b id="xid">—</b> <span id="xst" class="st NA">—</span></span>
+    <select id="bld"></select><label><input type="checkbox" id="sig" checked> SigLIP</label>
+    <button class="go" id="b_start" onclick="act('start',{building:$('bld').value,siglip:$('sig').checked})">실험 시작</button>
+    <button id="b_pause" onclick="act('pause')">일시정지</button><button id="b_resume" onclick="act('resume')">재개</button>
+    <button class="danger" id="b_end" onclick="if(confirm('실험을 종료하고 기록을 저장합니까? (LIVE2 소유 프로세스만 정지)'))act('end')">실험 종료·저장</button>
+    <button id="b_e2" onclick="act('e2_start')">E2 초기 후보 계산</button><button id="b_e2r" onclick="act('e2_research')">E2 재탐색 요청</button>
+    <button id="b_son" onclick="act('siglip_on')">SigLIP 켜기</button><button id="b_soff" onclick="act('siglip_off')">SigLIP 끄기</button>
+    <button id="b_miss" onclick="act('start_missing')">미기동 모듈 재시도</button>
+    <button id="b_take" onclick="takeover()">제어권 인수</button><button onclick="logout()">로그아웃</button></div>
+  <div id="ctlmsg"></div>
+  <div class="kv" id="ctlkv"></div>
+  <table id="ctlmods"></table>
+  <div class="cap" id="ctljob"></div>
+  <div class="cap">일시정지 = 새 분석 보류(E2 새 층·pass 없음, E3 새 키프레임 없음, SigLIP 정지 후 재개 시 재기동). FAST-LIO·축적·센서 허브는 계속 동작. Go2 에는 어떤 명령도 보내지 않는다 — 정지는 조이스틱으로.</div>
+</section>
+<div class="card" style="margin:12px 16px 0" id="strip"></div>
+<div class="grid">
+  <section class="card wide"><h2>GLOBAL POSE · 초기 전역 위치 (E2 → E3 → E4)</h2>
+    <div id="gp"><div><div class="small">전역 위치</div><div class="big" id="gpose">UNKNOWN</div></div>
+      <div><div class="small">E4 모호성 상태</div><span id="e4big" class="st NA">—</span></div>
+      <div class="kv" id="e4kv" style="min-width:320px"></div></div>
+    <ul class="reasons" id="e4why"></ul>
+    <div class="cap" id="gpnote">전역 위치는 E6/E7(의미 확인·재정합)이 연결되기 전까지 UNKNOWN 이다. 아래 후보는 모두 미검증 가설이다.</div>
+  </section>
+  <section class="card wide"><h2>E2/E3 TOP-K · 실제 다층 후보 (미검증 가설)</h2>
+    <div class="kv" id="e2kv"></div>
+    <table id="topk"></table>
+    <div class="cap">score = E3 누적 기하 불일치(m, 낮을수록 좋음, 확률 아님) · e2 merit = 학생 metric_fit_v2 비용 · twoway = 학생 층 점수(높을수록 좋음) · 위치 m = 평면도 px / 추정 ppm (축척 미검증)</div>
+  </section>
+  <section class="card wide"><h2>층별·영역별 후보 분포 (모든 층을 같은 조건으로 탐색, 정답 층 미사용)</h2>
+    <div class="floors" id="floors"></div>
+    <div class="cap">● ACTIVE · ○ SUSPENDED(보류, 계속 재평가) · 선 = 추정 진행 방향 · 굵은 테두리 = 현재 1위</div>
+  </section>
+  <section class="card"><h2>E3 · 이동 중 후보 갱신</h2>
+    <div class="kv" id="e3kv"></div>
+    <canvas id="hist" width="520" height="170"></canvas>
+    <div class="cap">상위 후보 score 추이(이 화면을 연 뒤부터). 정지 중에는 새 키프레임이 없어 값이 유지된다.</div>
+    <table id="e3ev"></table>
+  </section>
+  <section class="card"><h2>SEMANTIC NEED · 의미 관측 필요 (E4 → E5)</h2>
+    <div class="kv" id="semkv"></div>
+    <table id="semtg"></table>
+    <div class="cap">대상 = 실제 의미지도(kci_handoff)의 방번호·시설. 팬틸트 명령은 보내지 않는다(조이스틱 회전은 운용자).</div>
+  </section>
+  <section class="card wide"><h2>처리시간 · 입력 신선도</h2><table id="lat"></table></section>
+  <section class="card"><h2>E5 ACTION · 정지 요청 (UI 표시 전용)</h2>
+    <div id="stopui" class="NA">정지 요청 없음</div>
+    <div class="cap">STOP_REQUEST_UI 는 운용자에게 보이는 표시일 뿐이며 로봇에는 아무 명령도 보내지 않는다. 정지는 조이스틱으로 사람이 한다.</div>
+    <div class="kv" id="e5act"></div>
+  </section>
+  <section class="card"><h2>LIO / MAP · FAST-LIO · odom · 축적</h2>
+    <div class="kv" id="lio"></div>
+    <canvas id="track" width="520" height="360"></canvas>
+    <div class="cap">빨간 선 = 실제 /Odometry 궤적(원시 FAST-LIO 좌표계, 몸체·건물 지도 좌표 아님)</div>
+    <img id="map" alt="축적 지도 없음">
+    <div class="cap" id="mapcap"></div>
+  </section>
+  <section class="card"><h2>REAL SENSOR · 실시간 RGB</h2>
+    <img id="live" alt="DATA_UNAVAILABLE"><div class="cap" id="livecap"></div>
+    <div class="kv" id="sensor"></div>
+  </section>
+  <section class="card"><h2>SIGLIP · 원본 추론 프레임</h2>
+    <img id="infer" alt="DATA_UNAVAILABLE"><div class="cap" id="infercap"></div>
+    <div class="kv" id="sig"></div>
+    <table id="regions"></table>
+  </section>
+  <section class="card"><h2>SEMANTIC MAP · E2–E7 연구 단계 (실제 연결 상태)</h2>
+    <table id="research"></table>
+  </section>
+  <section class="card wide"><h2>GROUND TRUTH · 실제 위치 기록 (평가 전용 · 추론 입력 아님)</h2>
+    <div class="row"><select id="gtb" onchange="gtFloors()"></select><select id="gtf" onchange="gtLoad()"></select>
+      <select id="gtk"><option value="start">시작 위치</option><option value="checkpoint">확인 지점</option></select>
+      <label><input type="checkbox" id="gtyaw"> 두 번째 클릭으로 방향 지정</label>
+      <input id="gtnote" placeholder="메모 (선택)" style="width:220px"><button class="go" onclick="gtSave()">GT 저장</button><span id="gtmsg"></span></div>
+    <canvas id="gtc" width="1400" height="660"></canvas>
+    <div class="cap" id="gtcap">층 의미지도를 고르고 로봇의 실제 위치를 클릭한다. 저장소: evaluation/&lt;실험&gt;/gt.jsonl (E2–E7 은 읽지 않음)</div>
+    <table id="gtlist"></table>
+  </section>
+  <section class="card wide"><h2>검출 평가 · SigLIP 실제 영상 (사람 확인만 정답)</h2>
+    <div class="row"><button onclick="snap()">현재 추론 프레임 고정</button>
+      <span>표지 문자 <input id="dtext" style="width:120px"></span><input id="dnote" placeholder="메모" style="width:200px">
+      <button class="go" onclick="dlab('TP')">올바른 검출</button><button class="danger" onclick="dlab('FP')">오검출</button>
+      <button onclick="dlab('MISSED')">놓친 표지판</button><button onclick="dlab('AMBIGUOUS')">애매한 관측</button><span id="dmsg"></span></div>
+    <canvas id="detc" width="848" height="480"></canvas>
+    <div class="cap" id="dcap">프레임을 고정한 뒤: 검출 상자를 클릭해 선택 → 올바른/오검출/애매. 놓친 표지판은 영상의 표지 위치를 클릭 → '놓친 표지판'. 저장소: evaluation/&lt;실험&gt;/detections.jsonl</div>
+    <table id="dlist"></table>
+  </section>
+  <section class="card"><h2>RESOURCES · 자원</h2><div class="kv" id="res"></div></section>
+  <section class="card"><h2>COMPONENTS · 소유 프로세스 · 승인 · frame 계약</h2><table id="comp"></table><div class="kv" id="appr"></div></section>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"—":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const cls=s=>!s?"NA":(s==="LIVE"||s==="RUNNING"||s==="OK"||s.startsWith&&s.startsWith("SIGLIP_OK")||s==="CONTRACT_PRESENT")?"OK":
+  (/UNAVAILABLE|NOT_|NO_|UNVERIFIED|DISABLED|STANDALONE/.test(s)?"NA":(/STALE|LOW|BELOW|OLD|INCOMPLETE|PAUSED|WAITING|STARTING|RELATIVE/.test(s)?"WARN":"BAD"));
+const badge=s=>`<span class="st ${cls(s)}">${esc(s)}</span>`;
+const kv=(el,rows)=>{$(el).innerHTML=rows.map(([k,v])=>`<div>${esc(k)}</div><div>${v}</div>`).join("")};
+const f=(v,d=1)=>v==null?"—":(typeof v==="number"?v.toFixed(d):esc(v));
+let imgAge={};
+function refreshImg(id,url,age){ if(age==null){$(id).removeAttribute("src");return;}
+  const key=Math.floor(Date.now()/1000-age); if(imgAge[id]!==key){imgAge[id]=key;$(id).src=url+"?t="+key;} }
+function drawTrack(tr){const c=$("track"),g=c.getContext("2d");g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);
+  if(!tr||tr.length<2){g.fillStyle="#888";g.font="14px sans-serif";g.fillText("odom 궤적 없음 (DATA_UNAVAILABLE)",12,24);return;}
+  let xs=tr.map(p=>p[0]),ys=tr.map(p=>p[1]);let x0=Math.min(...xs)-1,x1=Math.max(...xs)+1,y0=Math.min(...ys)-1,y1=Math.max(...ys)+1;
+  const s=Math.min((c.width-20)/(x1-x0),(c.height-20)/(y1-y0));const P=p=>[10+(p[0]-x0)*s,c.height-10-(p[1]-y0)*s];
+  g.strokeStyle="#ddd";g.lineWidth=1;for(let m=Math.ceil(x0);m<=x1;m++){const a=P([m,y0]),b=P([m,y1]);g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke();}
+  g.strokeStyle="#d22";g.lineWidth=2;g.beginPath();tr.forEach((p,i)=>{const q=P(p);i?g.lineTo(q[0],q[1]):g.moveTo(q[0],q[1]);});g.stroke();
+  const e=P(tr[tr.length-1]);g.fillStyle="#090";g.beginPath();g.arc(e[0],e[1],5,0,7);g.fill();
+  g.fillStyle="#333";g.font="12px sans-serif";g.fillText(`격자 1 m · 점 ${tr.length}`,12,16);}
+const SNAP=location.search.includes("snap");   // headless capture: synchronous first render (evidence screenshots only)
+function getSync(u){const x=new XMLHttpRequest(); x.open("GET",u,false); x.send(); return x.status===200?JSON.parse(x.responseText):null;}
+async function tick(pre){
+  let d=pre; if(!d){ try{const r=await fetch("/api/state",{cache:"no-store"});d=await r.json();}catch(e){$("banner").className="st BAD";$("banner").textContent="웹 서버 응답 없음";return;} }
+  const m=d.meta; const xs=m.experiment_state, act_=["STARTING","RUNNING","PARTIAL","PAUSED","STOPPING"].includes(xs);
+  $("banner").className="st "+(m.fake||m.test_only?"WARN":(act_?"OK":"NA"));
+  $("banner").textContent=m.fake?"FAKE 시험 (가짜 모듈)":(m.test_only?"TEST_ONLY (가짜/기록 데이터)":(act_?`LIVE 실험 ${m.experiment_id} · ${xs}`:(xs?`실험 없음 (${xs}) — 표시값은 실시간 아님`:"LIVE")));
+  $("hdr").textContent=`${m.server_time} · boot ${m.boot_id.slice(0,8)} · trial ${m.trial_id||"—"} · ${location.host}`;
+  const L=d.lio,o=L.odom||{},A=L.accumulation||{};
+  kv("lio",[["상태",badge(L.status)+(L.why?" "+esc(L.why):"")],["odom Hz (10 s)",f(o.hz_10s,2)],["마지막 수신 age",f(o.last_rx_age_s,3)+" s"],
+    ["도착 간격 p50/p95/max",`${f(o.interarrival_ms&&o.interarrival_ms.p50)}/${f(o.interarrival_ms&&o.interarrival_ms.p95)}/${f(o.interarrival_ms&&o.interarrival_ms.max)} ms`],
+    ["header→수신 p50/p95",`${f(o.header_to_rx_ms&&o.header_to_rx_ms.p50)}/${f(o.header_to_rx_ms&&o.header_to_rx_ms.p95)} ms`],
+    ["frame",esc(o.frame_id)+" → "+esc(o.child_frame_id)],["세션/거부",`${f(o.session,0)} / ${esc(JSON.stringify(o.rejected||{}))}`],
+    ["이동 거리",f(o.path_m,2)+" m"],["기준선 A1",L.baseline?`${f(L.baseline.hz_p50,2)} Hz`:"미측정"],
+    ["축적",A.enabled?`scan ${A.scans} · 칸 ${A.cells} · 처리 p95 ${f(A.process_ms_p95)} ms · age ${f(A.last_scan_age_s,2)} s`:badge("NOT_ENABLED")+" "+esc(A.why)],
+    ["파일 age",f(L.file_age_s,2)+" s"]]);
+  drawTrack(L.track_raw); refreshImg("map","/img/map.png",L.map_age_s); $("mapcap").textContent=L.map_age_s==null?"축적 지도 DATA_UNAVAILABLE":`축적 지도 age ${f(L.map_age_s,1)} s (원시 odom 좌표계)`;
+  const E=d.e5,S=E.scene||{},H=E.source_health||{},I=E.images||{};
+  const G=d.rgb||{},Q=d.siglip||{},P=d.localization||{},SS=d.session||{};
+  const exp=(d.approvals.A||{}).expires_epoch; const left=exp?Math.max(0,Math.round(exp-Date.now()/1000)):null;
+  const pr=P.pose_raw;
+  $("strip").innerHTML=`<div class="kv" style="grid-template-columns:repeat(6,max-content 1fr)">`+
+    `<div>모드</div><div>${badge(SS.mode||"MANUAL")}</div><div>RGB</div><div>${badge(G.status)} 새 프레임 ${f(G.last_frame_age_s,2)} s 전 · seq ${esc(G.last_seq)}</div>`+
+    `<div>SigLIP</div><div>${badge(Q.status)} ${esc(Q.why||"")}</div><div>FAST-LIO</div><div>${badge(L.status)} ${f(o.hz_10s,2)} Hz</div>`+
+    `<div>위치</div><div>${badge(P.status)} odom x ${pr?f(pr.x,2):"—"} y ${pr?f(pr.y,2):"—"} yaw ${pr?f(pr.yaw_deg,1):"—"}°</div>`+
+    `<div>승인 남은 시간</div><div>${left==null?badge("NO_APPROVAL"):(Math.floor(left/60)+"분 "+(left%60)+"초")}</div></div>`;
+  if(G.status&&G.status!=="DATA_UNAVAILABLE"){refreshImg("live","/img/rgb.jpg",G.live_jpeg_age_s);}else{refreshImg("live","/img/live.jpg",I.live_age_s);} refreshImg("infer","/img/inference.jpg",I.inference_age_s);
+  $("livecap").innerHTML=(G.status&&G.status!=="DATA_UNAVAILABLE")?`${badge(G.status)} 센서 허브 RGB · 새 프레임 ${f(G.last_frame_age_s,2)} s 전 · header age ${f(G.header_age_s,2)} s · color ${f(G.color&&G.color.hz,2)} Hz (SigLIP 상자 없음: 추론 원본은 아래 카드)`:
+    (I.live_age_s==null?badge("DATA_UNAVAILABLE"):`실시간 사진 파일 age ${f(I.live_age_s,2)} s — 상자는 이 프레임에서 추적된 것만`);
+  $("infercap").innerHTML=S.source_age_s==null?badge("DATA_UNAVAILABLE"):`추론 원본 프레임 age ${f(S.source_age_s,2)} s `+(S.source_old?badge("OLD_SOURCE"):badge("OK"))+" — 과거 추론 상자는 최신 영상에 고정하지 않음";
+  const col=H.color||{},dep=H.depth||{},go=E.geometry||{};
+  kv("sensor",[["상태",badge(E.status)],["color Hz / gap p95",`${f(col.hz,2)} / ${f(col.gap_p95_ms)} ms`],["depth Hz",f(dep.hz,2)],
+    ["구독",esc((H.subscribed||[]).join(", "))],["거부",esc(JSON.stringify(H.refused||{}))],["pose mode",badge(go.pose_mode)],["geometry",badge(go.geometry_status)]]);
+  kv("sig",[["모드",badge(E.mode)],["SigLIP",badge(E.status==="STALE"?"STALE (SIGLIP_"+E.siglip+" 기록값)":(E.siglip?"SIGLIP_"+E.siglip:null))],["장면 수 / 건너뜀",`${f(S.n,0)} / ${f(S.skipped,0)}`],
+    ["scene / SigLIP ms",`${f(S.scene_ms,0)} / ${f(S.siglip_infer_ms,0)}`],["tiles / 예산",`${f(S.n_tiles,0)} / ${esc(S.crop_budget&&S.crop_budget.max_crops)}`],
+    ["threshold",`${f(E.threshold,4)} (${esc(E.threshold_mode)})`],["프롬프트",esc((E.prompts||[]).join(" | "))]]);
+  $("regions").innerHTML="<tr><th>spot</th><th>sim</th><th>표시</th><th>사유</th></tr>"+(E.regions||[]).slice(0,10).map(r=>
+    `<tr><td>${esc(r.spot)}</td><td>${f(r.sim,4)}</td><td>${badge(r.display)}</td><td class="mono">${esc((r.reasons||[]).join(" "))}</td></tr>`).join("");
+  const su=E.stop_request_ui||{}; $("stopui").className=su.active?"BAD":"NA";
+  $("stopui").textContent=su.active?`STOP_REQUEST_UI · spot ${su.items[0].spot} — 조이스틱으로 정지하세요`:(E.status==="DATA_UNAVAILABLE"?"E5 꺼짐 (DATA_UNAVAILABLE)":"정지 요청 없음");
+  const g=E.gate||{},pt=E.pantilt||{},ws=E.would_stop||{};
+  kv("e5act",[["WOULD_STOP / DEFER",esc(JSON.stringify(ws.counts||{}))],["request_enabled",esc(g.request_enabled)],["actuator_armed",esc(g.actuator_armed)],
+    ["P2 보류 사유",esc(E.p2_defer&&E.p2_defer.why)],["팬틸트",pt.execute_enabled?badge("ENABLED"):badge("DISABLED (shadow; 장치 미개방)")],
+    ["base stopped / aim / capture / OCR",badge("NOT_RUN")],["이벤트",esc(JSON.stringify(E.events||[]))]]);
+  $("research").innerHTML="<tr><th>단계</th><th>상태</th><th>근거</th></tr>"+Object.entries(d.research).map(([k,v])=>
+    `<tr><td>${esc(k)}</td><td>${badge(v.status)}</td><td>${esc(v.why||"")}</td></tr>`).join("");
+  const R=d.resources; kv("res",[["최고 온도",f(R.max_temp_c)+" °C"],["MemAvailable",f(R.mem_available_mb,0)+" MB"],["GPU",f(R.gpu_load_pct)+" %"],
+    ["CPU",f(R.cpu_pct)+" %"],["load",esc((R.loadavg||[]).map(x=>x.toFixed(2)).join(" "))],["E5 보고 rss",esc(JSON.stringify((E.resources||{}).rss_mb||{}))]]);
+  $("comp").innerHTML="<tr><th>모듈</th><th>상태</th><th>PID</th><th>감독</th></tr>"+Object.entries(d.components).map(([k,v])=>
+    `<tr><td>${esc(k)}</td><td>${badge(v.alive?"OK":(v.owned?"ENDED":"NOT_STARTED"))}</td><td>${esc(v.pid)}</td><td class="mono">${esc(v.supervisor&&(v.supervisor.status+" "+(v.supervisor.end_reason||"")+" "+(v.supervisor.elapsed||"")))}</td></tr>`).join("");
+  const ap=d.approvals; kv("appr",[["승인 A",ap.A.valid?badge("OK"):badge(ap.A.why)],["승인 B",ap.B.valid?badge("OK"):badge(ap.B.why)],["frame 계약",badge(d.contract.status)]]);
+  try{tick2(d);}catch(e){console.error(e);}
+}
+
+const e4cls=s=>({CONFIDENT_GEOMETRY:"OK",DOMINANT_UNVERIFIED:"WARN",AMBIGUOUS:"WARN",SEARCH_INCOMPLETE:"WARN",INITIALIZING:"NA",RECOVERY_REQUIRED:"BAD"})[s]||"NA";
+const e4ko={INITIALIZING:"초기화 중",SEARCH_INCOMPLETE:"탐색 미완료",AMBIGUOUS:"모호",DOMINANT_UNVERIFIED:"우세 후보(미검증)",CONFIDENT_GEOMETRY:"기하 확신(미검증)",RECOVERY_REQUIRED:"복구 필요"};
+const fmeta={}, hist={}; let histT0=null;
+async function floorMeta(b,f){const k=b+"/"+f; if(SNAP&&fmeta[k]===undefined){fmeta[k]=getSync(`/api/floor_meta?b=${b}&f=${f}`);} if(fmeta[k]!==undefined) return fmeta[k]; fmeta[k]=null;
+  try{const r=await fetch(`/api/floor_meta?b=${b}&f=${f}`); if(r.ok){fmeta[k]=await r.json();} }catch(e){} return fmeta[k];}
+function drawFloors(L2){
+  const E2=L2.e2||{},E3=L2.e3||{},b=E2.building; const el=$("floors"); if(!b){el.innerHTML='<div class="cap">E2 미실행 (DATA_UNAVAILABLE)</div>';return;}
+  const H=(E3.hypotheses||[]); const best=H.filter(h=>h.status==="ACTIVE").sort((a,c)=>a.score-c.score)[0];
+  const floors=E2.floors||[]; if(el.dataset.b!==b||el.children.length!==floors.length){el.dataset.b=b;
+    el.innerHTML=floors.map(f=>`<figure><figcaption id="fc${f}"></figcaption><canvas id="fl${f}" width="300" height="120"></canvas></figure>`).join("");}
+  floors.forEach(async f=>{const hs=H.filter(h=>h.floor===f); const pf=(E2.per_floor||{})[f]||{};
+    const act=hs.filter(h=>h.status==="ACTIVE"), sus=hs.filter(h=>h.status==="SUSPENDED");
+    const bs=hs.length?Math.min(...hs.map(h=>h.score)):null;
+    $("fc"+f).innerHTML=`<b>${f}F</b> · ${badge(pf.status||"PENDING")} · active ${act.length} · 보류 ${sus.length} · best ${bs==null?"—":bs.toFixed(3)}`+(pf.sec?` · ${pf.sec}s`:"");
+    const m=await floorMeta(b,f); const c=$("fl"+f); if(!c) return; const g=c.getContext("2d");
+    if(!m){g.fillStyle="#888";g.fillText("평면도 없음",8,16);return;}
+    const tw=Math.round(m.size[0]*m.factor), th=Math.round(m.size[1]*m.factor), s=300/tw; c.height=Math.max(40,Math.round(th*s));
+    let img=c._img; if(!img){img=new Image(); img.src=`/img/floor/${b}/${f}.png`; c._img=img;}
+    const paint=()=>{g.drawImage(img,0,0,c.width,c.height);
+      hs.forEach(h=>{ if(!h.pose_px) return; const x=h.pose_px[0]*m.factor*s, y=h.pose_px[1]*m.factor*s, a=(h.heading_deg||0)*Math.PI/180;
+        g.strokeStyle=h.status==="ACTIVE"?"#d22":"#999"; g.fillStyle=g.strokeStyle; g.lineWidth=(best&&h.id===best.id)?3:1.5;
+        g.beginPath(); g.arc(x,y,4,0,7); h.status==="ACTIVE"?g.fill():g.stroke();
+        g.beginPath(); g.moveTo(x,y); g.lineTo(x+12*Math.cos(a), y-12*Math.sin(a)); g.stroke();
+        if(best&&h.id===best.id){g.beginPath();g.arc(x,y,9,0,7);g.stroke();}});};
+    if(img.complete) paint(); else img.onload=paint; });
+}
+function drawHist(H){const c=$("hist"),g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,c.width,c.height);
+  const now=Date.now()/1000; if(histT0==null) histT0=now;
+  H.slice(0,6).forEach(h=>{(hist[h.id]=hist[h.id]||[]).push([now,h.score]); if(hist[h.id].length>600) hist[h.id].shift();});
+  const ids=H.slice(0,6).map(h=>h.id); const pts=ids.flatMap(i=>hist[i]||[]); if(!pts.length){g.fillStyle="#888";g.fillText("후보 없음",10,20);return;}
+  const t0=Math.min(...pts.map(p=>p[0])),t1=Math.max(now,t0+1),v0=Math.min(...pts.map(p=>p[1])),v1=Math.max(...pts.map(p=>p[1]),v0+0.05);
+  const X=t=>30+(t-t0)/(t1-t0)*(c.width-40),Y=v=>c.height-15-(v-v0)/(v1-v0)*(c.height-30);
+  const col=["#d22","#1565c0","#2e7d32","#ef6c00","#6a1b9a","#00838f"];
+  g.fillStyle="#333";g.font="11px sans-serif";g.fillText(v1.toFixed(2),2,12);g.fillText(v0.toFixed(2),2,c.height-15);
+  ids.forEach((i,k)=>{const a=hist[i]||[]; g.strokeStyle=col[k]; g.lineWidth=1.5; g.beginPath(); a.forEach((p,j)=>{j?g.lineTo(X(p[0]),Y(p[1])):g.moveTo(X(p[0]),Y(p[1]));}); g.stroke();
+    g.fillStyle=col[k]; g.fillText(i,40+k*80,c.height-2);});}
+function tick2(d){
+  const L2=d.live2||{},E2=L2.e2,E3=L2.e3,E4=L2.e4,FD=L2.feed||{},ag=L2.ages||{};
+  $("gpose").textContent="UNKNOWN"; const st=E4?E4.state:null;
+  $("e4big").className="st "+(E4&&E4.status==="STALE"?"BAD":e4cls(st)); $("e4big").textContent=E4?((E4.status==="STALE"?"STALE · ":"")+st+" · "+(e4ko[st]||"")):"E4 미실행";
+  const M=(E4||{}).metrics||{};
+  kv("e4kv",[["1위",M.best_id?`${esc(M.best_id)} (${M.best_floor}F) score ${f(M.best_score,3)}`:"—"],["경쟁 후보",M.competitor_id?`${esc(M.competitor_id)} (${M.competitor_floor}F, ${esc(M.separation)})`:"—"],
+    ["gap",f(M.gap,3)+" m"],["층 탐색",`${f(M.floors_done,0)}/${f(M.floors_total,0)} (실패 ${f(M.floors_failed,0)})`],["gap 안의 층",esc(JSON.stringify(M.floors_within_gap_amb||[]))],
+    ["1위 키프레임 / 경로",`${f(M.best_n_kf,0)} / ${f(M.path_since_best_fit_m,1)} m`],["입력 age (odom/표본)",`${f(M.odom_last_rx_age_s,2)} / ${f(M.feed_last_sample_age_s,2)} s`],["E4 파일 age",f(ag.e4,2)+" s"]]);
+  $("e4why").innerHTML=((E4||{}).reasons||["E4 미실행"]).map(r=>`<li>${esc(r)}</li>`).join("");
+  kv("e2kv",[["E2 상태",badge(E2?E2.status:"NOT_RUNNING")+(E2&&E2.held?" "+badge("HELD")+" "+esc(E2.held):"")],["건물",E2?esc(E2.building_name||E2.building):"—"],
+    ["pass",E2?`${E2.pass_id} (${esc(E2.pass_why||"")}) · ${f(E2.pass_sec,0)} s`:"—"],["층 완료 / 대기",E2?`${esc(JSON.stringify(E2.floors_done||[]))} / ${esc(JSON.stringify(E2.floors_pending||[]))}`:"—"],
+    ["장치",E2?`${esc(E2.device)} · 프로세스 ${E2.procs}`:"—"],["입력",esc(FD.input||"—")],["E2 파일 age",f(ag.e2,1)+" s"]]);
+  const H=(E3&&E3.hypotheses)||[];
+  $("topk").innerHTML="<tr><th>#</th><th>후보</th><th>층</th><th>상태</th><th>score</th><th>gap</th><th>e2 merit</th><th>twoway</th><th>kf</th><th>최근</th><th>위반</th><th>위치 m (x,y)</th><th>방향°</th></tr>"+
+    H.slice(0,15).map((h,i)=>`<tr><td>${i+1}</td><td class="mono">${esc(h.id)}</td><td>${h.floor}F</td><td>${badge(h.status==="ACTIVE"?"ACTIVE":"SUSPENDED")}</td><td>${f(h.score,3)}</td><td>${f(h.gap_to_best,3)}</td><td>${f(h.e2_merit,3)}</td><td>${f(h.e2_twoway,2)}/${f(h.twoway_mean,2)}</td><td>${h.n_kf}</td><td>${f(h.recent,3)}</td><td>${h.violations}</td><td>${h.pose_m?f(h.pose_m[0],1)+", "+f(h.pose_m[1],1):"—"}</td><td>${f(h.heading_deg,0)}</td></tr>`).join("")+
+    (!H.length?`<tr><td colspan="13">${E2&&E2.top&&E2.top.length?"E2 후보 있음 — E3 반영 대기":"후보 없음"}</td></tr>`:"");
+  drawFloors(L2); drawHist(H);
+  const T=(E3||{}).timing||{};
+  kv("e3kv",[["E3",badge(E3?E3.status:"NOT_RUNNING")],["후보 alive/active/보류/소실",E3?`${E3.n_alive}/${E3.n_active}/${E3.n_suspended}/${E3.n_dropped}`:"—"],
+    ["키프레임 / 대기",E3?`${E3.n_keyframes} / ${E3.kf_pending}`:"—"],["마지막 키프레임",E3&&E3.last_kf?`${esc(E3.last_kf.sid)} · 평가 ${E3.last_kf.n_eval}개 · ${f(E3.last_kf.ms,0)} ms`:"—"],
+    ["키프레임 처리 p50/p95",`${f(T.kf_ms_p50,0)} / ${f(T.kf_ms_p95,0)} ms`],["E3 파일 age",f(ag.e3,2)+" s"]]);
+  $("e3ev").innerHTML="<tr><th>시각</th><th>사건</th><th>내용</th></tr>"+((E3||{}).events||[]).slice(-8).reverse().map(e=>
+    `<tr><td>${new Date(e.wall*1000).toLocaleTimeString()}</td><td>${esc(e.kind)}</td><td class="mono">${esc(JSON.stringify(Object.fromEntries(Object.entries(e).filter(([k])=>k!=="wall"&&k!=="kind"))))}</td></tr>`).join("");
+  const S=(E4||{}).semantic||{}, E5=d.e5||{}, LK=E5.e4_link||{};
+  kv("semkv",[["의미 관측",S.needed?badge("NEEDED"):badge("NOT_NEEDED")],["우선순위",badge(S.priority)],["이유",esc(S.why)],["대상 층",esc(JSON.stringify(S.floors_in_question||[]))],
+    ["E5 가 본 E4",badge((E5.e4||{}).status||"E4_UNAVAILABLE")],["E5 연결",LK.installed?`설치됨 · 장면 ${LK.scenes} · 예산초과 ${LK.binding_scenes} · 우선 전송 ${LK.promoted_total}`:badge("NOT_CONNECTED")],
+    ["SigLIP 현재 후보",esc((E5.regions||[]).slice(0,3).map(r=>`spot ${r.spot} sim ${r.sim!=null?r.sim.toFixed(3):"—"} ${r.display}`).join(" | ")||"—")]]);
+  $("semtg").innerHTML="<tr><th>층</th><th>대상</th><th>거리 m</th><th>방위°</th><th>관측 가능성</th><th>층 구분</th></tr>"+(S.targets||[]).slice(0,8).map(t=>
+    `<tr><td>${t.floor}F</td><td>${esc(t.kind)} <b>${esc(t.label)}</b></td><td>${f(t.dist_m,1)}</td><td>${f(t.bearing_deg,0)}</td><td>${badge(t.observability)}</td><td>${t.discriminates_floors?"예":"—"}</td></tr>`).join("");
+  const Lo=(d.lio||{}).odom||{}, sc=(E5.scene||{}), pf=(E2||{}).per_floor||{}, e4t=(E4||{}).timing_ms||{};
+  const rows=[["FAST-LIO /Odometry",`${f(Lo.hz_10s,2)} Hz · 도착간격 p95 ${f(Lo.interarrival_ms&&Lo.interarrival_ms.p95)} ms`,f(Lo.last_rx_age_s,2)],
+    ["E2 입력(표본)",`생성 p50/p95 ${f(FD.sample_ms_p50)}/${f(FD.sample_ms_p95)} ms · 셀 ${FD.last?FD.last.n_cells:"—"} · 원거리 ${FD.last?FD.last.n_far:"—"} · span ${f(FD.span_s,0)} s`,FD.last&&FD.last.wall?f(Date.now()/1000-FD.last.wall,2):"—"],
+    ["E2 층별 (열기/정합/채점/총)",Object.entries(pf).map(([k,v])=>`${k}F ${f(v.open_s,0)}/${f(v.fit_s,0)}/${f(v.score_s,0)}/${f(v.sec,0)}s`).join(" · ")||"—",f(ag.e2,1)],
+    ["E2 pass",E2?`${f(E2.pass_sec,0)} s (pass ${E2.pass_id})`:"—","—"],
+    ["E3 키프레임",`p50 ${f(T.kf_ms_p50,0)} · p95 ${f(T.kf_ms_p95,0)} ms · tick ${f(T.last_tick_ms,0)} ms`,f(ag.e3,2)],
+    ["E4 판단",`${f(e4t.e4,1)} ms`,f(ag.e4,2)],
+    ["SigLIP 장면 / 추론",`${f(sc.scene_ms,0)} / ${f(sc.siglip_infer_ms,0)} ms`,f(E5.file_age_s,2)]];
+  $("lat").innerHTML="<tr><th>단계</th><th>처리시간</th><th>입력·결과 age (s)</th></tr>"+rows.map(r=>`<tr><td>${r[0]}</td><td class="mono">${r[1]}</td><td>${r[2]}</td></tr>`).join("");
+}
+
+// ---------------- operator control (console only; the read-only web has no /api/ctl)
+let CSRF=null, CS=null, snapMeta=null, snapImg=null, selReg=null, missPt=null, gtImg=null, gtMeta=null, gtPt=null, gtDir=null;
+const rid=()=>Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b=>b.toString(16).padStart(2,"0")).join("");
+async function jpost(url,body,csrf){const h={"Content-Type":"application/json"}; if(csrf) h["X-CSRF-Token"]=csrf;
+  const r=await fetch(url,{method:"POST",headers:h,body:JSON.stringify(body),credentials:"same-origin"}); let j={}; try{j=await r.json();}catch(e){} return [r.status,j];}
+function msg(t,bad){$("ctlmsg").innerHTML=bad?`<span class="st BAD">거부</span> ${esc(t)}`:esc(t);}
+async function sess(){try{const r=await fetch("/api/session"); if(!r.ok){["ctl"].forEach(i=>$(i).style.display="none"); return;} const j=await r.json(); CSRF=j.csrf;
+  $("loginrow").style.display=j.logged_in?"none":"flex"; $("ctlrow").style.display=j.logged_in?"flex":"none";
+  $("tokhint").textContent=j.token_configured?"":"운용자 토큰 미설정 (Claude Code: ctl console-token)";}catch(e){$("ctl").style.display="none";}}
+async function login(){const [c,j]=await jpost("/api/login",{token:$("tok").value}); $("tok").value=""; if(c===200){CSRF=j.csrf; msg("로그인됨"); sess();} else msg(j.why||c,true);}
+async function logout(){await jpost("/api/logout",{},CSRF); CSRF=null; sess();}
+async function act(a,extra){if(!CSRF){msg("로그인 필요",true);return;} const [c,j]=await jpost("/api/ctl/"+a,Object.assign({request_id:rid()},extra||{}),CSRF);
+  if(c>=400) msg(`${a}: ${j.why||c}`,true); else msg(`${a}: ${j.duplicate?"중복 요청(재실행 안 함)":(c===202?"진행 중…":"완료")}${j.note?" — "+j.note:""}`); ctick();}
+async function takeover(){const t=prompt("제어권 인수: 운용자 토큰"); if(!t) return; const [c,j]=await jpost("/api/ctl/takeover",{request_id:rid(),token:t},CSRF); msg(c===200?"제어권 인수됨":(j.why||c),c!==200);}
+const ACT=["STARTING","RUNNING","PARTIAL","PAUSED","STOPPING"];
+async function ctick(pre){let s=pre; if(!s){try{const r=await fetch("/api/ctl/state",{cache:"no-store"}); if(!r.ok){$("ctl").style.display="none";return;} s=await r.json();}catch(e){return;}}
+  CS=s; const X=s.experiment||{}, ap=s.approval||{}, sf=s.safety||{}, J=s.job, act_=ACT.includes(X.state), busy=J&&!J.done, mine=s.you_own;
+  if(!$("bld").options.length){$("bld").innerHTML=s.buildings.map(b=>`<option>${b}</option>`).join(""); $("gtb").innerHTML=$("bld").innerHTML; gtFloors();}
+  $("xid").textContent=X.exp_id||"—"; $("xst").className="st "+(X.state==="RUNNING"?"OK":(X.state==="PARTIAL"||X.state==="PAUSED"||X.state==="STARTING"?"WARN":(X.state&&X.state.startsWith("ENDED")?"NA":(X.state==="IDLE"||!X.state?"NA":"BAD"))));
+  $("xst").textContent=X.state||"IDLE";
+  const dis=(id,v)=>{$(id).disabled=v;};
+  dis("b_start",busy||act_||!ap.valid); dis("b_pause",busy||!mine||!(X.state==="RUNNING"||X.state==="PARTIAL")); dis("b_resume",busy||!mine||X.state!=="PAUSED");
+  dis("b_end",busy||!mine||!act_); ["b_e2","b_e2r","b_son","b_soff","b_miss"].forEach(i=>dis(i,busy||!mine||!act_||X.state==="PAUSED"));
+  $("b_take").style.display=s.owned_by_other?"":"none";
+  const left=ap.remaining_s==null?null:Math.max(0,Math.round(ap.remaining_s));
+  kv("ctlkv",[["승인 A",ap.valid?badge("OK")+` 남은 시간 ${Math.floor(left/60)}분 ${left%60}초`:badge(ap.why)+" — 실기동 거부 (승인은 Claude Code 기록 절차로만)"],
+    ["승인 모듈",esc((ap.modules||[]).join(", "))],["안전 조건",(sf.start_ok?badge("OK"):badge("START_BLOCKED"))+` 최고 ${f(sf.max_temp_c)} °C · MemAvailable ${f(sf.mem_available_mb,0)} MB · ${esc(sf.rule)}`],
+    ["boot",esc((sf.boot_id||"").slice(0,8))],["제어권",mine?badge("OK")+" 이 세션":(s.owned_by_other?badge("OTHER_SESSION")+" 다른 세션 소유":"—")],
+    ["기록",esc(X.record_dir||"—")],["평가 저장소",esc(X.eval_dir||"—")],["종료",esc((X.end_reason||"")+(X.stop_failed&&X.stop_failed.length?" · 정지 실패 "+X.stop_failed:""))]]);
+  $("ctlmods").innerHTML="<tr><th>모듈</th><th>승인</th><th>실험 단계</th><th>프로세스</th><th>감독</th><th>사유</th></tr>"+Object.entries(s.modules).map(([m,v])=>{const e=v.exp||{};
+    return `<tr><td>${m}</td><td>${v.approved?badge("OK")+(v.max_run_s?" "+v.max_run_s+" s":""):badge("NOT_APPROVED")}</td><td>${badge(e.state||"—")}</td><td>${v.alive?badge("RUNNING")+" "+v.pid:badge("NOT_RUNNING")}</td><td>${esc((v.sup||"")+" "+(v.end_reason||""))}</td><td class="mono">${esc((e.why||[]).join(" | "))}</td></tr>`;}).join("");
+  $("ctljob").innerHTML=J?`작업 ${esc(J.action)} ${J.done?"완료":"진행 중"} · `+(J.steps||[]).map(t=>`${t.module}${t.stopped?"(정지)":""}:${t.ok?"OK":"실패"}`).join(" → ")+(J.result&&J.done?` · 결과 ${esc(JSON.stringify(J.result))}`:""):"";
+}
+// ---------------- GT
+async function gtFloors(){const b=$("gtb").value; if(!b) return; const r=await fetch(`/api/gt/floors?b=${b}`); const j=await r.json();
+  $("gtf").innerHTML=j.floors.map(x=>`<option value="${x.floor}">${x.floor}F${x.semantic?"":" (의미지도 없음)"}</option>`).join(""); gtLoad();}
+async function gtLoad(){const b=$("gtb").value,fl=$("gtf").value; if(!fl) return; const r=await fetch(`/api/gt/meta?b=${b}&f=${fl}`); if(!r.ok) return; gtMeta=await r.json(); gtPt=null; gtDir=null;
+  gtImg=new Image(); gtImg.onload=gtDraw; gtImg.src=`/img/sem/${b}/${fl}.png`; gtList();}
+function gtDraw(){const c=$("gtc"),g=c.getContext("2d"); if(!gtImg||!gtImg.complete) return; c.height=Math.round(c.width*gtImg.height/gtImg.width);
+  g.drawImage(gtImg,0,0,c.width,c.height); const s=c.width/gtImg.width*gtMeta.factor; g.fillStyle="#1565c0"; g.font="11px sans-serif";
+  (gtMeta.labels||[]).forEach(l=>{g.fillText(l.t,l.px[0]*s,l.px[1]*s);});
+  if(gtPt){const x=gtPt[0]*s,y=gtPt[1]*s; g.strokeStyle="#d00"; g.lineWidth=3; g.beginPath(); g.arc(x,y,8,0,7); g.stroke();
+    if(gtDir){g.beginPath(); g.moveTo(x,y); g.lineTo(gtDir[0]*s,gtDir[1]*s); g.stroke();}}
+  $("gtcap").textContent=`${gtMeta.semantic?"의미지도":"의미지도 없음 → 위치추정 평면도"} · ${gtMeta.source} · 해상도 ${gtMeta.resolution_m_per_px||"—"} m/px`+(gtPt?` · 선택 px (${gtPt[0].toFixed(0)}, ${gtPt[1].toFixed(0)})`:"");}
+$("gtc").addEventListener("click",e=>{if(!gtMeta) return; const c=$("gtc"),r=c.getBoundingClientRect(); const s=c.width/gtImg.width*gtMeta.factor;
+  const p=[(e.clientX-r.left)*c.width/r.width/s,(e.clientY-r.top)*c.height/r.height/s]; if(gtPt&&$("gtyaw").checked&&!gtDir) gtDir=p; else {gtPt=p; gtDir=null;} gtDraw();});
+async function gtSave(){if(!gtPt){$("gtmsg").textContent="위치를 먼저 클릭";return;}
+  const yaw=gtDir?Math.atan2(-(gtDir[1]-gtPt[1]),gtDir[0]-gtPt[0])*180/Math.PI:null;
+  const [c,j]=await jpost("/api/ctl/gt_save",{request_id:rid(),kind:$("gtk").value,building:$("gtb").value,floor:+$("gtf").value,px:gtPt[0],py:gtPt[1],yaw_deg:yaw,note:$("gtnote").value},CSRF);
+  $("gtmsg").innerHTML=c===200?badge("OK")+" "+esc(j.gt.gt_id):badge("BAD")+" "+esc(j.why||c); gtList();}
+async function gtList(){const r=await fetch("/api/gt/list"); const j=await r.json();
+  $("gtlist").innerHTML="<tr><th>GT</th><th>종류</th><th>층</th><th>px</th><th>map m</th><th>방향°</th><th>odom</th><th>시각</th></tr>"+j.rows.slice().reverse().map(g=>
+    `<tr><td class="mono">${esc(g.gt_id)}</td><td>${g.kind==="start"?"시작":"확인 지점"}</td><td>${g.building} ${g.floor}F</td><td>${g.px}, ${g.py}</td><td>${esc(g.map_m)}</td><td>${f(g.yaw_deg,0)}</td><td class="mono">${esc(g.odom&&g.odom.last_raw?f(g.odom.last_raw.x,2)+", "+f(g.odom.last_raw.y,2):"—")}</td><td>${esc(g.time)}</td></tr>`).join("");}
+// ---------------- detection evaluation
+async function snap(){const [c,j]=await jpost("/api/ctl/det_snapshot",{request_id:rid()},CSRF); if(c!==200){$("dmsg").innerHTML=badge("BAD")+" "+esc(j.why||c);return;}
+  snapMeta=j.snapshot; selReg=null; missPt=null; snapImg=new Image(); snapImg.onload=dDraw; snapImg.src=j.image;
+  $("dmsg").innerHTML=`${badge(snapMeta.image_matches_status?"OK":"IMAGE_STATUS_MISMATCH")} ${esc(snapMeta.snap_id)} · frame stamp ${esc(snapMeta.frame.scene_stamp)} · hub seq ${esc(snapMeta.frame.hub_seq)}`;}
+function dDraw(){const c=$("detc"),g=c.getContext("2d"); if(!snapImg) return; c.width=snapImg.width; c.height=snapImg.height; g.drawImage(snapImg,0,0);
+  (snapMeta.siglip.regions||[]).forEach((r,i)=>{const b=r.box||[]; if(b.length<4) return; g.lineWidth=i===selReg?4:2; g.strokeStyle=i===selReg?"#ff0":"#0f0";
+    g.strokeRect(b[0],b[1],b[2]-b[0],b[3]-b[1]); g.fillStyle="#ff0"; g.font="14px sans-serif"; g.fillText(`#${i} ${r.sim!=null?r.sim.toFixed(3):""} ${r.display||""}`,b[0],b[1]-3);});
+  if(missPt){g.strokeStyle="#f0f"; g.lineWidth=3; g.beginPath(); g.arc(missPt[0],missPt[1],12,0,7); g.stroke();}}
+$("detc").addEventListener("click",e=>{if(!snapMeta) return; const c=$("detc"),r=c.getBoundingClientRect(); const x=(e.clientX-r.left)*c.width/r.width, y=(e.clientY-r.top)*c.height/r.height;
+  const k=(snapMeta.siglip.regions||[]).findIndex(q=>q.box&&x>=q.box[0]&&x<=q.box[2]&&y>=q.box[1]&&y<=q.box[3]); if(k>=0){selReg=k;missPt=null;} else {missPt=[Math.round(x),Math.round(y)];selReg=null;} dDraw();});
+async function dlab(l){if(!snapMeta){$("dmsg").textContent="프레임을 먼저 고정";return;}
+  const [c,j]=await jpost("/api/ctl/det_label",{request_id:rid(),snap_id:snapMeta.snap_id,label:l,region_index:selReg,point:missPt,sign_text:$("dtext").value,note:$("dnote").value},CSRF);
+  $("dmsg").innerHTML=c===200?badge("OK")+" "+esc(l)+" 저장":badge("BAD")+" "+esc(j.why||c); dList();}
+async function dList(){const r=await fetch("/api/det/list"); if(!r.ok) return; const j=await r.json();
+  $("dlist").innerHTML="<tr><th>라벨</th><th>프레임</th><th>run</th><th>상자/위치</th><th>sim</th><th>문자</th><th>시각</th></tr>"+j.rows.slice().reverse().map(x=>
+    `<tr><td>${badge(x.label)}</td><td class="mono">${esc(x.snap_id)} · seq ${esc(x.frame&&x.frame.hub_seq)}</td><td class="mono">${esc(x.run_id)}</td><td>${x.region_index!=null?"#"+x.region_index:esc(x.point)}</td><td>${f(x.region&&x.region.sim,3)}</td><td>${esc(x.sign_text)}</td><td>${esc(x.time)}</td></tr>`).join("");}
+
+if(SNAP){tick(getSync("/api/state")); const cs=getSync("/api/ctl/state"); if(cs){$("loginrow").style.display="none"; $("ctlrow").style.display="flex"; ctick(cs);}} else {tick(); setInterval(tick,1000); sess().then(()=>{ctick(); setInterval(ctick,1000); dList();});}
+</script>
+</body>
+</html>

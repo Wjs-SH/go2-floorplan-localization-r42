@@ -1,0 +1,10 @@
+{
+ "run": "/home/unitree/sci_ws/repairs/livefield2_20261018_151606/candidate/experiments/live1_observe_20261116_182204",
+ "stops": {
+  "A1": 12,
+  "A2": 10,
+  "A3": 4,
+  "A4": 4
+ },
+ "legacy_A0": 12
+}

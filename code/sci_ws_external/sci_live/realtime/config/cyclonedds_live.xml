@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 실시간 노드용 CycloneDDS 설정(2026-10-08). Unitree 기본(eth0)에 조각 크기·소켓 버퍼만 더했다.
+     기본 조각 1344 B 이면 1.6 MB 점군 하나가 ~1200 조각이 되고, 점군 구독자가 FAST-LIO 말고 하나만 더 붙어도
+     드라이버 송신이 0.1초를 넘겨 FAST-LIO 까지 6.9 Hz·지연 1.7~2.4초로 밀렸다(로봇 실측). 드라이버·FAST-LIO·노드를 모두 이 설정으로 띄운다. -->
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain id="any">
+    <General>
+      <Interfaces>
+        <NetworkInterface name="eth0" priority="default" multicast="default"/>
+      </Interfaces>
+      <MaxMessageSize>65500B</MaxMessageSize>
+      <FragmentSize>65000B</FragmentSize>
+    </General>
+    <Internal>
+      <SocketReceiveBufferSize min="8MB"/>
+      <SocketSendBufferSize min="8MB"/>
+    </Internal>
+  </Domain>
+</CycloneDDS>

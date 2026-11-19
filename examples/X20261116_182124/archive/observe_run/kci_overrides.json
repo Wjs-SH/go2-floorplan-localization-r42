@@ -1,0 +1,53 @@
+{
+ "p2.timing.reaction_s": {
+  "sci": 1.5,
+  "kci": 2.5,
+  "why": "10-15 실측 신호→정지 중앙 약 2.3 s",
+  "status": "EXPERIMENT_OVERRIDE_UNVALIDATED"
+ },
+ "p2.readability.obliquity_max_deg": {
+  "sci": 55.0,
+  "kci": 75.0,
+  "why": "55°(결정 50°)는 벽 표지판이 RealSense 화면 밖일 때만 통과(10-17 현장)",
+  "status": "EXPERIMENT_OVERRIDE_UNVALIDATED",
+  "note": "OCR readability at this obliquity/range not measured"
+ },
+ "p2.readability.range_max_m": {
+  "sci": 4.0,
+  "kci": 5.0,
+  "why": "벽 표지판 통과 구간을 복도 가운데(옆 1.5 m)에서도 화면 안에 두려고",
+  "status": "EXPERIMENT_OVERRIDE_UNVALIDATED",
+  "note": "OCR readability at this obliquity/range not measured"
+ },
+ "odom_speed": {
+  "sci": "0.5 s 양 끝 차이",
+  "kci": "1 s 기울기(최소제곱)",
+  "why": "서 있을 때 흔들림으로 멈춤 확인 지연",
+  "status": "KEPT_STUDENT_FIX"
+ },
+ "capture_quality.sharp_min": {
+  "sci": 40.0,
+  "kci": 20.0,
+  "metric": "laplacian_var_cv32f_full_gray(full image)",
+  "status": "EXPERIMENT_OVERRIDE_UNVALIDATED",
+  "note": "console uses a CENTRE-ROI metric (30); full-image 20 vs centre 30 are not comparable"
+ },
+ "live_boxes": {
+  "mode": "tracked",
+  "status": "E5RT_TRACKED_OVERLAY",
+  "note": "legacy = student 2.5 s old boxes (comparison only)"
+ },
+ "home_after_event": {
+  "policy": "e5rt.home_policy",
+  "status": "E5RT_REPLACES_STUDENT_ALWAYS_HOME"
+ },
+ "siglip_cache": {
+  "mode": "off",
+  "status": "E5RT_OPT_IN"
+ },
+ "e5rt_version": "e5rt-0.1-20261017",
+ "would_stop_evaluator": {
+  "status": "PRIVATE_COUNTERFACTUAL",
+  "file": "would_stop_private.jsonl"
+ }
+}

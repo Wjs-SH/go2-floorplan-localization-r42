@@ -1,0 +1,1 @@
+{"status": "ENDED", "end_reason": "STOP_REQUESTED", "child": {"pid": 18748, "pgid": 18748, "start": 71628}, "leftovers": [], "peak": {"temp": 77.031, "avail_min": 3705, "rss_mb": 2569.44921875}, "module": "e34", "supervisor_pid": 18740, "wall": 1794821222.8161275}

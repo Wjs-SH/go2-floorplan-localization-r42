@@ -1,0 +1,19 @@
+{
+ "verified": true,
+ "verified_by": "esy + 사용자 감독(2026-10-17 현장, 로봇 옆에서 확인하며 시험)",
+ "verified_at": "2026-10-17",
+ "start_reference": "콘솔 켤 때의 렌즈 위치(절대 위치 모름, 끝 스위치 없음) — 양쪽으로 같은 걸음 수만 탐색",
+ "source_of_values": "2026-09-16 초점 모터 실측(PWM 140~180 잘 물림, 255 헛돎, 전체 이동 11~12 s, 백래시 60~320 ms) + 2026-09-19 단계식 자동초점 성공 설정(속도 180, 300 ms, roi 0.5) + 선명도 30 이면 글자 판독(09-16)",
+ "pwm": 180,
+ "step_ms": 300,
+ "settle_s": 0.35,
+ "backlash_ms": 120,
+ "max_steps_each_dir": 7,
+ "frame_timeout_s": 0.5,
+ "measure_s": 0.2,
+ "min_sharp_converged": 30.0,
+ "low_luma": 25.0,
+ "plateau_rel": 0.1,
+ "strategy": "kci_stepwise_20260919",
+ "note_20261017": "R1 FocusSearch 는 이 렌즈에서 실패(최고 13.2) → 9-19 단계식 사용, 시간 상한 45 s"
+}

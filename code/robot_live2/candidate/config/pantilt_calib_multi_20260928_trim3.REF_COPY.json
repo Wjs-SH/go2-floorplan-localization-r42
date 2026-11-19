@@ -1,0 +1,114 @@
+{
+  "_comment": "RealSense RGB 픽셀을 팬틸트 서보 각도로 바꾸기 위한 값. 좌표는 로봇 기준 앞+x 왼쪽+y 위+z, 단위 m. null은 아직 실측 전.",
+  "realsense_color": {
+    "_source": "Go2 /camera/color/camera_info 2026-09-17 조회. 2026-07 4층 bag과 동일",
+    "width": 640,
+    "height": 480,
+    "fx": 606.7977,
+    "fy": 606.7451,
+    "cx": 310.4879,
+    "cy": 240.5169
+  },
+  "pan_axis_from_realsense": {
+    "_desc": "RealSense RGB 렌즈 중심에서 팬 회전축(아래 서보 축 중심선)이 놓인 판 높이 지점까지",
+    "x": -0.21311260469655435,
+    "y": -0.041726399632077325,
+    "z": 0.29811077451986207
+  },
+  "realsense_mount_deg": {
+    "_desc": "RealSense가 팬 기준 정면에서 틀어진 각도. 수평·정면이면 전부 0",
+    "yaw": 0.0,
+    "pitch": 0.0,
+    "roll": 0.0
+  },
+  "tilt_axis_from_pan_axis": {
+    "_desc": "팬축 기준 틸트 회전축 위치. 팬이 정면(100도)일 때 기준",
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "camera_from_tilt_axis": {
+    "_desc": "틸트축 기준 IMX477 렌즈 광학중심. 틸트가 수평(160도)일 때 기준. y는 좌우 치우침",
+    "x": 0.0,
+    "y": 0.0,
+    "z": 0.0
+  },
+  "servo": {
+    "_source": "2026-09-28 pantilt_calib_fit_multi.py: 공통 기하(0919·0923·0928 51장) + 0928 영점",
+    "pan_zero_deg": 97.61598633148375,
+    "pan_deg_per_left_deg": 1.1309081567475423,
+    "tilt_zero_deg": 145.9798428251913,
+    "tilt_deg_per_up_deg": -0.9062415097442947,
+    "pan_limit_deg": [
+      50.0,
+      150.0
+    ],
+    "tilt_limit_deg": [
+      115.0,
+      180.0
+    ],
+    "_limit_note": "팬 50~150, 틸트 115~180 (09-23 설정 유지)"
+  },
+  "pantilt_lens": {
+    "_desc": "IMX477 + C마운트 렌즈. 초점거리 확인 전",
+    "focal_mm": null,
+    "sensor_width_mm": 6.287
+  },
+  "_fit": {
+    "model": "기존 7개(공통 기하)",
+    "sessions": {
+      "0919": 22,
+      "0923": 8,
+      "0928": 21
+    },
+    "target": "0928",
+    "loo_target": "팬 1.04°  틸트 0.74°  합 평균 1.28° 최대 2.35°",
+    "note": "공통 기하 + 세션별 영점. 다시 끼우면 영점만 새 샘플 2~3장으로 맞추면 됨"
+  },
+  "_trim": [
+    {
+      "time": "20260919_165814",
+      "checks": 5,
+      "mean_err_deg": [
+        -0.34,
+        -3.16
+      ],
+      "d_pan_cmd": 0.39,
+      "d_tilt_cmd": -2.77,
+      "from": "pantilt_calib_fitted_20260919_tape.json"
+    },
+    {
+      "time": "20261112_203611",
+      "checks": 6,
+      "mean_err_deg": [
+        -0.46,
+        -1.1
+      ],
+      "d_pan_cmd": 0.52,
+      "d_tilt_cmd": -1.0,
+      "from": "pantilt_calib_multi_20260928.json",
+      "method": "2026-11-12 표식 없이: RealSense 9지점 조준 뒤 팬틸트 사진 가운데를 RealSense 사진에서 영상 맞추기(배율 0.17~0.21 고정), 일치 0.8 이상 6지점 평균. EEPROM 안 씀"
+    },
+    {
+      "time": "20261115_230054",
+      "checks": 7,
+      "mean_err_deg": [
+        -1.56,
+        -5.73
+      ],
+      "d_pan_cmd": 1.76,
+      "d_tilt_cmd": -5.19,
+      "from": "pantilt_calib_multi_20260928_trim1.json",
+      "method": "2026-11-15 로봇 넘어진 뒤: 9지점 조준 + 팬틸트 사진 가운데를 RealSense 에서 영상 맞추기(배율 0.189 고정, ±150 px), 일치 0.8 이상 7지점 평균. SIFT 로 교차 확인. RealSense 바닥 기울기는 11-13 과 같음(0.5° 안). EEPROM 안 씀"
+    },
+    {
+      "time": "20261116_120715",
+      "from": "pantilt_calib_multi_20260928_trim2.json",
+      "checks": 6,
+      "d_pan_axis_z_m": 0.138,
+      "d_pan_cmd": -0.02,
+      "d_tilt_cmd": -5.02,
+      "method": "2026-11-16 브라우저 마커 조준 6장(1.1~3.2 m): RealSense 마커 위치·크기 + 팬틸트 사진 마커 오차로 _trim2 에 팬축 높이·영점 보정만 얹음. 거리 따라 오차가 커지는 모양(1.3 m 0°, 2.7 m 약 3° 낮음)을 맞춘 등가값. 하나 빼고 예측 평균 0.77°. 3.2 m 밖은 미확인. EEPROM 안 씀"
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+ "profile_id": "live2_af_student_kci_stepwise_v1",
+ "schema": "LIVE2 actuator profile v1 — limits the LIVE2 guards enforce around the UNCHANGED student stepwise AF",
+ "verified": false,
+ "verified_note": "NOT verified for the CURRENT hardware: AIM #1 (2026-10-20 06:56) lens responded ~1.4 s then no image change; AIM #2 (16:55) no image change in either direction. A single supervised verification run (approval B af_profile_verification_run=true) is required before verified=true. Student profile af_profile_kci_20261017.json was verified by the student for 2026-10-17 only.",
+ "strategy": "kci_stepwise_20260919",
+ "student_sources": {
+  "aim_console.py": "candidate/external/sci_event/code/aim_console.py sha256 dec720f84f42276c (identical to the 8770 copy)",
+  "autofocus.py": "candidate/external/sci_event/code/autofocus.py sha256 c84c0e606394c042 (stepwise, run_pass, takeup_lash)",
+  "af_profile_kci_20261017.json": "student profile: pwm 180, step_ms 300, settle 0.35 s, backlash_ms 120, min_sharp_converged 30, low_luma 25"
+ },
+ "evidence_runs": "see reports/af_20261022/STUDENT_AF_EVIDENCE.md",
+ "pwm_max": 180,
+ "pulse_ms_range": [
+  30,
+  500
+ ],
+ "pulse_ms_note": "student schedule: 500 ms big steps (start < 8), 300 ms coarse, >=120 / >=60 / 60 ms passes, 60-80 ms lash probes, 50 ms fine, halved to a 30 ms minimum when the final 'stand on the peak' pass overshoots again (autofocus.stepwise: step_ms = max(30, step_ms // 2)). 30 ms lower bound (2026-10-22): the student console SENT 15 x 30 ms pulses at PWM 160 on 2026-10-17 20:33 (out/aim_console.log, K4 '서기2', lash take-up detected motion at the 6th 30 ms probe) — firmware accepted them and the image changed. Firmware source is not on this host (hex only); FIELD_GUIDE.md states a 3 s per-command maximum, no minimum is documented. 30 ms on the CURRENT mount is UNVERIFIED. The old 40 ms bound would have stopped such a run with AF_PULSE_OUT_OF_PROFILE.",
+ "settle_s": 0.35,
+ "max_pulses": 160,
+ "max_total_drive_ms": 24000,
+ "max_total_drive_note": "2 x full ring travel (11-12 s, 2026-09-16 measurement)",
+ "unverified_max_total_drive_ms": 6000,
+ "unverified_max_total_drive_note": "applied while verified=false (approval B drive_ms_max can only lower it). Student logs 2026-10-17: K5 CONVERGED 3950 ms commanded drive / 51 pulses / 35.6 s; K4 4760 ms / 68 pulses (budget); AIM #1 2026-10-20 ~5530 ms (budget). 3000 ms would stop K5 in its 4th stage. 6000 ms = 1.5 x K5, about half of the 11-12 s full ring travel (2026-09-16, current mount unverified).",
+ "drive_fault_nochange_ms_each_dir": 6000,
+ "drive_fault_note": "both directions without ANY image change for >= 6 s of commanded drive each (about half of the 11-12 s full travel) -> SUSPECTED_DRIVE_FAULT (mechanical OR Nano/L9110S/wiring/power), latched. 1.5 s was rejected OFFLINE: a heavily defocused lens can move for seconds with no visible change (false fault). AIM #2 (Focus V2, 850 ms total, no change) would NOT trip this alone; the student search would continue to the 6 s limit or the 45 s budget.",
+ "no_response_stop_ms": 3000,
+ "response_moved_min": 2.0,
+ "response_rel_sharp": 0.15,
+ "blurry_floor": 8.0,
+ "no_response_note": "early stop (2026-10-22). Response after a pulse = 160x120 motion-image change >= 2.0 OR sharpness change >= 15 % from a frame >= 8. Static noise seen: AIM #1 after the drive stopped moved 1.1-1.2, AIM #2 (lens not moving) 1.24-1.66; working lens on 2026-10-17 (K4/K5, sharpness 5-55) moved 1.4-7.2. Longest legitimate no-response streak in the student sequence (estimate): 3 end-stop steps x 300 ms + 10 lash probes x 80 ms = 1700 ms -> stop at 3000 ms. Counted only from frames >= 8: below it the student notes one step barely changes the image (big-step phase). Thresholds are from logs, NOT verified on the current mount.",
+ "change_thresh": 1.5,
+ "budget_s": 45.0,
+ "min_budget_s": 15.0,
+ "frame_timeout_s": 1.0,
+ "low_luma": 25.0,
+ "target_iou_min": 0.3,
+ "thresholds": {
+  "skip_if_sharp": 30.0,
+  "accept_sharp": 40.0,
+  "min_sharp_converged": 30.0,
+  "capture_quality_min": 30.0,
+  "ocr_allowed_if_capture_quality_ge": 30.0
+ },
+ "distance_range_m": [
+  3.5,
+  5.0
+ ],
+ "distance_note": "student successes were on lab targets; KCI 3.5-5 m room plates not yet tested with AF",
+ "unverified": [
+  "current lens/gear/coupling condition",
+  "Nano placement / wiring / L9110S / power on the current mount",
+  "AF at 3.5-5 m on KCI room plates",
+  "sign-ROI metric scale vs the centre-ROI thresholds",
+  "30 ms pulses on the current mount (student 2026-10-17 log only)",
+  "no-response thresholds (2.0 moved / 15 % / 3000 ms) on the current mount",
+  "sign-ROI vs centre-ROI scale: real captures ratio 0.33-7.3 when a sign component is found (reports/e8_auto_20261022/af_roi_scale_offline.json)"
+ ]
+}

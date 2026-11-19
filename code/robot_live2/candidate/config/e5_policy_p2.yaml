@@ -1,0 +1,28 @@
+# P2 stop-timing policy (Phase 2). Values marked ASSUMPTION are not yet measured on the robot.
+verify:
+  dmax_m: 5.0                 # dev: 6.0 -> 3 FP, 5.0 + obliquity 80 -> 0 FP, same recall
+  obliquity_max_deg: 80.0     # in-view sanity (same value as A3)
+  edge_px: 6
+  min_obs: 1
+timing:
+  tick_hz: 10.0          # timing layer rate (no GPU); e5_node runs it on every camera frame
+  reaction_s: 1.5        # ASSUMPTION (operator reaction), not measured
+  margin_m: 0.3          # ASSUMPTION (braking distance), not measured; offline result identical for 0.0/0.3
+  track_timeout_s: 25.0
+  min_speed_for_prediction: 0.05
+readability:
+  obliquity_max_deg: 55.0
+  range_max_m: 4.0
+  range_min_m: 0.8
+  text_min_px: 15.0
+  text_frac: 0.35
+  imx_fpx_1920: 4400.0
+  pan_margin_deg: 3.0
+  tilt_margin_deg: 3.0
+  decision_margin_deg: 5.0  # dev sweep (tick 10 Hz): 0->1/7, 3->2/7, 5->3/7 readable signs, 15 loses signs; see PHASE2_STOP_POLICY
+info:
+  use_e4: true
+dedup:
+  same_m: 1.0
+  same_sec: 60.0
+  merge_m: 0.8

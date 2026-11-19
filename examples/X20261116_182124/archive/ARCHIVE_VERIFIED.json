@@ -1,0 +1,14 @@
+{
+ "exp_id": "X20261116_182124",
+ "verified": true,
+ "n_files": 772,
+ "bytes": 40995700,
+ "sha256_of_SHA256SUMS": "fd4079f9c33080f2b73278e37cf23c0fd22264b5b368640fea01944db38e5c1b",
+ "missing": [
+  "e6_aim_console"
+ ],
+ "copy_errors": 0,
+ "took_s": 0.6,
+ "free_gb_after": 35.2,
+ "written_wall": 1794821229.5900888
+}

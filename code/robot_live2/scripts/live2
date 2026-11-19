@@ -1,0 +1,3 @@
+#!/bin/bash
+# LIVE-FIELD2 web console shortcut (web only; research modules start from the web under approval A).
+exec /usr/bin/python3 -I -B /home/unitree/sci_ws/repairs/livefield2_20261018_151606/scripts/live2_cli.py "$@"

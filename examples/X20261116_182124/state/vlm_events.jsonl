@@ -1,0 +1,13 @@
+{"kind": "LIVE2_VLM_STATE", "state": "OFF", "why": "not needed yet", "n_asked": 0, "n_load": 0, "load_s": null, "last_s": null, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794820925.5019593}
+{"kind": "LIVE2_VLM_STATE", "state": "LOADING", "why": "VLM server starting", "n_asked": 0, "n_load": 1, "load_s": null, "last_s": null, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821042.8452682}
+{"kind": "LIVE2_VLM_STATE", "state": "READY", "why": "VLM server ready", "n_asked": 0, "n_load": 1, "load_s": 11.6, "last_s": null, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821054.4317594}
+{"kind": "LIVE2_VLM_STATE", "state": "ASKING", "why": null, "n_asked": 0, "n_load": 1, "load_s": 11.6, "last_s": null, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821054.4343889}
+{"kind": "LIVE2_VLM_STATE", "state": "READY", "why": "idle (stops after 90 s)", "n_asked": 1, "n_load": 1, "load_s": 11.6, "last_s": 6.4, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821060.8414128}
+{"kind": "LIVE2_VLM_STATE", "state": "OFF", "why": "stopped: BATCH_DONE", "n_asked": 1, "n_load": 1, "load_s": 11.6, "last_s": 6.4, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821061.542894}
+{"kind": "LIVE2_VLM_STATE", "state": "LOADING", "why": "VLM server starting", "n_asked": 1, "n_load": 2, "load_s": 11.6, "last_s": 6.4, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821142.985536}
+{"kind": "LIVE2_VLM_STATE", "state": "READY", "why": "VLM server ready", "n_asked": 1, "n_load": 2, "load_s": 14.6, "last_s": 6.4, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821157.462888}
+{"kind": "LIVE2_VLM_STATE", "state": "ASKING", "why": null, "n_asked": 1, "n_load": 2, "load_s": 14.6, "last_s": 6.4, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821157.492344}
+{"kind": "LIVE2_VLM_STATE", "state": "READY", "why": "idle (stops after 90 s)", "n_asked": 2, "n_load": 2, "load_s": 14.6, "last_s": 6.3, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821163.7944698}
+{"kind": "LIVE2_VLM_STATE", "state": "OFF", "why": "stopped: BATCH_DONE", "n_asked": 2, "n_load": 2, "load_s": 14.6, "last_s": 6.3, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821164.8277802}
+{"kind": "LIVE2_VLM_STATE", "state": "LOADING", "why": "VLM server starting", "n_asked": 2, "n_load": 3, "load_s": 14.6, "last_s": 6.3, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821210.3567493}
+{"kind": "LIVE2_VLM_STATE", "state": "FAILED", "why": "llama-server exited rc=-2", "n_asked": 2, "n_load": 3, "load_s": 14.6, "last_s": 6.3, "model": "Qwen3VL-2B-Instruct-Q8_0.gguf", "wall": 1794821219.663336}

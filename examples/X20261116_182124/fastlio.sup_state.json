@@ -1,0 +1,1 @@
+{"status": "ENDED", "end_reason": "STOP_REQUESTED", "child": {"pid": 17882, "pgid": 17882, "start": 68124}, "leftovers": [], "peak": {"temp": 76.937, "avail_min": 3738, "rss_mb": 304.37109375}, "module": "fastlio", "supervisor_pid": 17881, "wall": 1794821227.8831518}

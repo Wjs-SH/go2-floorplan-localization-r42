@@ -1,0 +1,17 @@
+rendered /home/unitree/sci_ws/repairs/livefield2_20261018_151606/runtime/fastlio/body_20261116_182129/fastlio_alt.yaml mode live-e2-body status ROTATION_AND_DT_ESTIMATED_T_NOMINAL
+adapter T_1b tag 39f53d472199
+[alt-imu] body mode: bridge READY, adapter started, starting FAST-LIO (alt config) — log follows
+[INFO] [1794820901.055770019] [sci_alt_laser_mapping]: p_pre->lidar_type 2
+Multi thread started 
+~~~~/home/unitree/sci_ws/external/fastlio_ws/src/FAST_LIO_ROS2/ file opened
+[INFO] [1794820901.066860938] [sci_alt_laser_mapping]: Node init finished.
+[FLIO-06] timestamp field: datatype=8 offset=18 npts=64000 min=1794820901.029029 max=1794820901.129261 range=0.100232
+[FLIO-06] per-point timestamp deskew ACTIVE (scale_ms=1000.000000)
+IMU Initial Done
+[WARN] [1794820901.246721681] [sci_alt_laser_mapping]: No point, skip this scan!
+
+[INFO] [1794820901.356519946] [sci_alt_laser_mapping]: Initialize the map kdtree
+catch sig %d2
+Rebuild thread terminated normally
+[alt-imu] body mode stopped
+{"status": "STOP_REQUESTED", "peak": {"temp": 76.937, "avail_min": 3738, "rss_mb": 304.37109375}, "escaped": [18166, 18176, 18215, 18216, 18218, 18219], "leftovers": []}

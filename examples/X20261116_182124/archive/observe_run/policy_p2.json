@@ -1,0 +1,34 @@
+{
+ "verify": {
+  "dmax_m": 5.0,
+  "obliquity_max_deg": 80.0,
+  "edge_px": 6,
+  "min_obs": 1
+ },
+ "timing": {
+  "tick_hz": 10.0,
+  "reaction_s": 1.5,
+  "margin_m": 0.3,
+  "track_timeout_s": 25.0,
+  "min_speed_for_prediction": 0.05
+ },
+ "readability": {
+  "obliquity_max_deg": 55.0,
+  "range_max_m": 4.0,
+  "range_min_m": 0.8,
+  "text_min_px": 15.0,
+  "text_frac": 0.35,
+  "imx_fpx_1920": 4400.0,
+  "pan_margin_deg": 3.0,
+  "tilt_margin_deg": 3.0,
+  "decision_margin_deg": 5.0
+ },
+ "info": {
+  "use_e4": true
+ },
+ "dedup": {
+  "same_m": 1.0,
+  "same_sec": 60.0,
+  "merge_m": 0.8
+ }
+}

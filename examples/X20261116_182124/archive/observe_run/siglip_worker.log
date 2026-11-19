@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/unitree/sci_ws/repairs/livefield2_20261018_151606/candidate/src/sci_visual_observation/siglip_worker.py", line 248, in <module>
+    main()
+  File "/home/unitree/sci_ws/repairs/livefield2_20261018_151606/candidate/src/sci_visual_observation/siglip_worker.py", line 204, in main
+    req = read_msg(inp)
+  File "/home/unitree/sci_ws/repairs/livefield2_20261018_151606/candidate/src/sci_visual_observation/siglip_worker.py", line 144, in read_msg
+    head = f.read(4)
+KeyboardInterrupt

@@ -1,0 +1,24 @@
+{"wall": 1794820884.116682, "time": "2026-11-16 18:21:24 KST", "kind": "experiment_start", "building": "kci", "siglip": true, "input": "body", "e6_mode": "MANUAL_SETTLE", "loc_mode": "AUTO_INITIAL_GLOBAL", "archived_leftover_files": 0, "start_gt": true}
+{"wall": 1794820884.1324012, "time": "2026-11-16 18:21:24 KST", "kind": "student_start_hook", "script": "/home/unitree/sci_ws_student_staging_20261109/tools/plate_merge/on_experiment_start.sh"}
+{"wall": 1794820884.1355753, "time": "2026-11-16 18:21:24 KST", "kind": "pantilt_consent", "file": "/home/unitree/sci_ws/repairs/livefield2_20261018_151606/runtime/approvals/B_20261116_182124_X20261116_182124.json", "vlm": true}
+{"wall": 1794820901.4788404, "time": "2026-11-16 18:21:41 KST", "kind": "module_started", "module": "fastlio", "why": "map kdtree initialised"}
+{"wall": 1794820908.9593585, "time": "2026-11-16 18:21:48 KST", "kind": "module_started", "module": "lio2", "why": "odometry 10.03 Hz"}
+{"wall": 1794820916.5072734, "time": "2026-11-16 18:21:56 KST", "kind": "module_started", "module": "hub", "why": "hub index fresh"}
+{"wall": 1794820918.4277117, "time": "2026-11-16 18:21:58 KST", "kind": "module_started", "module": "rec", "why": "recorder alive"}
+{"wall": 1794820924.6468709, "time": "2026-11-16 18:22:04 KST", "kind": "module_started", "module": "observe", "why": "SigLIP keeper RUNNING"}
+{"wall": 1794820926.0251527, "time": "2026-11-16 18:22:06 KST", "kind": "module_started", "module": "e34", "why": "E4 writing"}
+{"wall": 1794820926.028845, "time": "2026-11-16 18:22:06 KST", "kind": "e6_plate", "mode": "CASE1"}
+{"wall": 1794820929.9215856, "time": "2026-11-16 18:22:09 KST", "kind": "module_started", "module": "e2", "why": "E2 coordinator writing"}
+{"wall": 1794820929.9225333, "time": "2026-11-16 18:22:09 KST", "kind": "experiment_running", "failed": []}
+{"wall": 1794820941.8124561, "time": "2026-11-16 18:22:21 KST", "kind": "experiment_ready_to_move", "event_id": "X20261116_182124:READY", "after_start_s": 57.7}
+{"wall": 1794821214.0655355, "time": "2026-11-16 18:26:54 KST", "kind": "experiment_stopping", "reason": "OPERATOR_END"}
+{"wall": 1794821216.5819826, "time": "2026-11-16 18:26:56 KST", "kind": "module_stopped", "module": "observe", "rc": 0}
+{"wall": 1794821218.5540292, "time": "2026-11-16 18:26:58 KST", "kind": "module_stopped", "module": "e2", "rc": 0}
+{"wall": 1794821222.937901, "time": "2026-11-16 18:27:02 KST", "kind": "module_stopped", "module": "e34", "rc": 0}
+{"wall": 1794821223.6623693, "time": "2026-11-16 18:27:03 KST", "kind": "module_stopped", "module": "rec", "rc": 0}
+{"wall": 1794821224.6859617, "time": "2026-11-16 18:27:04 KST", "kind": "module_stopped", "module": "hub", "rc": 0}
+{"wall": 1794821225.402227, "time": "2026-11-16 18:27:05 KST", "kind": "module_stopped", "module": "lio2", "rc": 0}
+{"wall": 1794821227.9235847, "time": "2026-11-16 18:27:07 KST", "kind": "module_stopped", "module": "fastlio", "rc": 0}
+{"wall": 1794821228.9759252, "time": "2026-11-16 18:27:08 KST", "kind": "pantilt_consent_closed", "reason": "OPERATOR_END"}
+{"wall": 1794821228.9901855, "time": "2026-11-16 18:27:08 KST", "kind": "experiment_ended", "reason": "OPERATOR_END", "stop_failed": [], "archived_files": 41}
+{"wall": 1794821229.5907946, "time": "2026-11-16 18:27:09 KST", "kind": "archive_verified", "n_files": 772, "bytes": 40995700, "missing": ["e6_aim_console"], "took_s": 0.6}

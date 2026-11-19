@@ -1,0 +1,36 @@
+{
+ "schema_version": "r1.1",
+ "resource_wait_s": 30,
+ "check_interval_s": 5,
+ "max_admission_checks": 6,
+ "inference_timeout_s": 120,
+ "vlm_start_timeout_s": 180,
+ "max_reboot_reissues": 1,
+ "max_ocr_per_loop": 1,
+ "max_vlm_steps_per_loop": 1,
+ "vlm_need_mb": 4200,
+ "vlm_reserve_mb": 2000,
+ "vlm_max_side": 768,
+ "vlm_profiled_max_sides": [
+  768
+ ],
+ "roi_margin_frac": 0.25,
+ "preprocess_version": "r1-ocr-pre-1",
+ "_value_status": {
+  "resource_wait_s": "TEMPORARY_DEV_VALUE (R1 instructions 6.7) - not a measured latency target, not a field-operation approval",
+  "check_interval_s": "TEMPORARY_DEV_VALUE",
+  "max_admission_checks": "TEMPORARY_DEV_VALUE",
+  "inference_timeout_s": "BOUNDED_PLACEHOLDER - real value to be fixed by a later onboard VLM benchmark (equals the legacy urllib timeout 120 s)",
+  "vlm_start_timeout_s": "legacy VlmServer.start wait_s (unchanged)",
+  "vlm_need_mb": "UNCHANGED legacy protection value (benchmarks/post_reboot/vlm_memory.txt, 768 px, ctx 4096)",
+  "vlm_reserve_mb": "UNCHANGED legacy protection value",
+  "vlm_max_side": "768 = the only resolution with a measured memory profile; 1280 px is UNVERIFIED and is refused by admission (resource_profile_unverified)",
+  "roi_margin_frac": "TEMPORARY_DEV_VALUE (OCR crop margin around a verified target ROI)",
+  "vlm_async": "E5RT2: VLM inference on one worker thread; reader keeps ingesting/OCR/deadlines (logical timeout != thread stopped)",
+  "max_ocr_errors": "E5RT2 TEMPORARY_DEV_VALUE: OCR engine exceptions before terminal OCR_ENGINE_ERROR (R1 retried forever)",
+  "ocr_retry_s": "E5RT2 TEMPORARY_DEV_VALUE: back-off before the bounded OCR retry"
+ },
+ "vlm_async": true,
+ "max_ocr_errors": 2,
+ "ocr_retry_s": 2.0
+}

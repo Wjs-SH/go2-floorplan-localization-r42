@@ -1,0 +1,100 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SEM1 Label and Box Review</title><style>
+:root{--bg:#f6f6f4;--fg:#1c1c1a;--mut:#67675f;--card:#fff;--acc:#2563eb;--line:#d9d9d4;--warn:#b45309;--sel:#dc2626}
+@media (prefers-color-scheme:dark){:root{--bg:#151514;--fg:#ececea;--mut:#9b9b94;--card:#21211f;--line:#3a3a36;--warn:#f59e0b}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 14px;border-bottom:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+main{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:12px;padding:12px 14px}@media (max-width:1000px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px}.mut{color:var(--mut);font-size:12px}
+button,select,input{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:5px 8px;border-radius:6px}button{cursor:pointer}
+button.on{background:var(--acc);color:#fff;border-color:var(--acc)}.strip{display:flex;gap:6px;overflow-x:auto;margin:6px 0}
+.strip img{height:70px;border-radius:4px;border:2px solid transparent;cursor:pointer}.strip img.cur{border-color:var(--acc)}
+#wrap{position:relative;overflow:auto;max-height:76vh;border:1px solid var(--line);border-radius:6px}#cv{display:block;cursor:crosshair;touch-action:none}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}.box{border:1px solid var(--line);border-radius:6px;padding:6px;margin:6px 0}
+.box.sel{border-color:var(--sel)}.warn{color:var(--warn);font-weight:600}.tiles img{width:96px;image-rendering:pixelated;border:1px solid var(--line)}
+</style></head><body>
+<header><b>SEM1 표지 유형 + 상자 검토</b><select id="grp"></select><span id="pos" class="mut"></span>
+<button onclick="go(-1)">◀ 이전 항목 (PgUp)</button><button onclick="go(1)">다음 항목 (PgDn) ▶</button>
+<label>검토자 <input id="reviewer" size="10" placeholder="이름" onchange="S.reviewer=this.value;save()"></label>
+<button onclick="dl('json')">JSON 전체 내보내기</button><button onclick="dl('csv')">HUMAN_BBOX.csv 내보내기</button>
+<label class="mut">JSON 불러오기 <input type="file" accept=".json" onchange="loadFile(this.files[0])"></label></header>
+<main><section class="card"><div class="row"><span id="itemhead"></span><button id="hintbtn" onclick="hint=!hint;draw()">모델 참고 보기</button><span id="hint" class="mut"></span></div>
+<div class="strip" id="strip"></div><div class="row mut" id="frameinfo"></div>
+<div class="row">이 프레임 상태:<span id="fstat"></span></div>
+<div class="row mut">원본 프레임에서 표지 전체를 드래그해 상자를 그린다. 상자를 누르면 선택, 모서리를 끌면 크기 조정, 안쪽을 끌면 이동. Del=삭제, +/- 확대. 상자 좌표는 원본 픽셀로 저장된다.</div>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<div class="row"><b>문맥 미리보기(JPEG, 모델 입력 아님)</b> <img id="prev" style="max-height:120px"></div>
+<div class="row"><b>실제 모델 입력(224×224)</b> <span id="enc"></span></div><div class="tiles" id="tiles"></div></section>
+<aside class="card"><div id="boxes"></div><div class="mut">human_verified 는 내가 직접 이 상자와 유형을 확인했을 때만 체크한다. 체크 안 한 상자는 평가에 쓰이지 않는다.</div></aside></main>
+<script>
+const DOC=__DATA__;const VT=["ROOM_PLATE","ROOM_NAME","SHOP_SIGN","DIRECTORY","DIRECTIONAL_SIGN","POSTER","REFLECTION","SWITCH","HANDLE","OTHER","UNKNOWN"];
+const RO=["LOCAL_ANCHOR","DIRECTIONAL_CUE","NONLOCAL_TEXT","UNKNOWN"],RD=["READABLE","PARTIAL","UNREADABLE","NOT_TEXT"],FS=["SAME_TARGET","DIFFERENT_OBJECT","NO_TARGET","UNKNOWN"];
+const GROUPS=["POSITIVE_PROVISIONAL","UNREADABLE_PROVISIONAL","OTHER_PROVISIONAL_NEG_OR_AMBIGUOUS","MISSED_SIGN_SCAN"];
+const KEY='sem1_followup_labels_'+DOC.label_revision;let S={reviewer:'',items:{},history:[]};try{S=JSON.parse(localStorage.getItem(KEY))||S}catch(e){}
+let hint=false,gi=0,ii=0,fi=0,scale=1,sel=null,drag=null,img=new Image();
+const now=()=>new Date().toISOString();function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function itemsOf(g){return DOC.items.filter(x=>x.group===GROUPS[g])}function curItem(){return itemsOf(gi)[ii]}function curFrame(){return curItem().frames[fi]}
+function fstate(){const it=curItem(),f=curFrame();S.items[it.item]=S.items[it.item]||{frames:{}};const st=S.items[it.item].frames[f.frame_sha256]=S.items[it.item].frames[f.frame_sha256]||{status:null,boxes:[]};return st}
+function log(kind,detail){S.history.push({at:now(),reviewer:S.reviewer||'',item:curItem().item,frame_sha256:curFrame().frame_sha256,kind,detail});save()}
+function newBox(x0,y0,x1,y1){const st=fstate();const b={box_id:'b'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),revision:1,x0,y0,x1,y1,polygon:null,
+ physical_target_id:'',visit_id:'',visual_type:null,localization_role:null,text_readability:null,target_in_model_crop:'UNSURE',note:'',human_verified:false,test_only:false,reviewed_at:now()};st.boxes.push(b);sel=b.box_id;log('box_add',b);return b}
+function setB(b,k,v){if(k==='target_in_model_crop'&&curFrame().encoder_input.status.indexOf('EXACT')!==0)v='UNSURE';const old=b[k];b[k]=v;b.revision++;b.reviewed_at=now();log('box_set',{box_id:b.box_id,k,from:old,to:v});draw()}
+function go(d){const n=itemsOf(gi).length;ii=Math.max(0,Math.min(n-1,ii+d));fi=0;sel=null;draw()}
+function setFrame(k){fi=k;sel=null;draw()}
+function draw(){const its=itemsOf(gi);if(!its.length)return;const it=curItem(),f=curFrame(),st=fstate();
+document.getElementById('pos').textContent=`${ii+1}/${its.length}`;document.getElementById('reviewer').value=S.reviewer||'';
+document.getElementById('itemhead').innerHTML=`<b>${it.item}</b> <span class="mut">${it.dataset_id} · ${it.split} · run ${it.run_id}</span>`;
+document.getElementById('hint').textContent=hint?`참고(사람 판단 아님): v3=${it.hint.v3} best_sim=${it.hint.best_sim} 이 프레임 sim=${f.model_sim}`:'';
+document.getElementById('hintbtn').textContent=hint?'모델 참고 숨기기':'모델 참고 보기';
+document.getElementById('strip').innerHTML=it.frames.map((x,k)=>`<img src="${x.frame_path}" class="${k===fi?'cur':''}" title="${x.clip_role} t=${x.t_scene}" onclick="setFrame(${k})">`).join('');
+document.getElementById('frameinfo').textContent=`${f.clip_role} · frame ${f.frame_id} · ${f.width}×${f.height} · sha256 ${f.frame_sha256.slice(0,16)}… · t=${f.t_scene}`;
+document.getElementById('fstat').innerHTML=FS.map(v=>`<button class="${st.status===v?'on':''}" onclick="fstate().status='${v}';log('frame_status','${v}');draw()">${v}</button>`).join('');
+const pv=document.getElementById('prev');if(f.preview){pv.src=f.preview;pv.style.display=''}else pv.style.display='none';
+const e=f.encoder_input;document.getElementById('enc').innerHTML=e.status.indexOf('EXACT')===0?'<span>검증된 실제 입력 (원본 frame sha 일치)</span>':`<span class="warn">NOT_AVAILABLE</span> <span class="mut">${e.why||''}</span>`;
+document.getElementById('tiles').innerHTML=(e.tiles||[]).map(t=>`<img src="${t.png}" title="tile box ${t.box_src.map(v=>v.toFixed(0)).join(',')}">`).join('');
+if(img.dataset.src!==f.frame_path){img=new Image();img.dataset.src=f.frame_path;img.onload=paint;img.src=f.frame_path}else paint();
+document.getElementById('boxes').innerHTML=`<div class="row"><button onclick="newBox(10,10,60,60);draw()">상자 추가</button><span class="mut">이 프레임 상자 ${st.boxes.length}개</span></div>`+st.boxes.map(b=>boxForm(b)).join('')}
+function opt(b,k,arr){return `<div class="row"><span class="mut">${k}</span>`+arr.map(v=>`<button class="${b[k]===v?'on':''}" onclick="setB(B('${b.box_id}'),'${k}','${v}')">${v}</button>`).join('')+'</div>'}
+function B(id){return fstate().boxes.find(b=>b.box_id===id)}
+function boxForm(b){const ex=curFrame().encoder_input.status.indexOf('EXACT')===0;return `<div class="box ${sel===b.box_id?'sel':''}" onclick="sel='${b.box_id}';paint()"><div class="row"><b>상자 ${b.box_id}</b><span class="mut">[${[b.x0,b.y0,b.x1,b.y1].map(v=>v.toFixed(1)).join(', ')}] r${b.revision}</span><button onclick="delBox('${b.box_id}')">삭제</button></div>
+<div class="row">physical_target_id <input value="${esc(b.physical_target_id)}" onchange="setB(B('${b.box_id}'),'physical_target_id',this.value)" size="10"> visit_id <input value="${esc(b.visit_id)}" onchange="setB(B('${b.box_id}'),'visit_id',this.value)" size="6"></div>
+${opt(b,'visual_type',VT)}${opt(b,'localization_role',RO)}${opt(b,'text_readability',RD)}
+<div class="row"><span class="mut">target_in_model_crop</span>${ex?['Y','N','UNSURE'].map(v=>`<button class="${b.target_in_model_crop===v?'on':''}" onclick="setB(B('${b.box_id}'),'target_in_model_crop','${v}')">${v}</button>`).join(''):'<span class="warn">UNSURE (실제 모델 입력 없음)</span>'}</div>
+<div class="row">메모 <input value="${esc(b.note)}" onchange="setB(B('${b.box_id}'),'note',this.value)" size="22"></div>
+<div class="row"><label><input type="checkbox" ${b.human_verified?'checked':''} onchange="setB(B('${b.box_id}'),'human_verified',this.checked)"> 내가 직접 확인함</label>
+<label class="mut"><input type="checkbox" ${b.test_only?'checked':''} onchange="setB(B('${b.box_id}'),'test_only',this.checked)"> TEST_ONLY(시험용 기록)</label>
+<button onclick="polyStart('${b.box_id}')">4모서리 polygon</button><span class="mut">${b.polygon?'polygon 있음':''}</span></div></div>`}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function delBox(id){const st=fstate();const b=B(id);st.boxes=st.boxes.filter(x=>x.box_id!==id);log('box_delete',b);sel=null;draw()}
+let poly=null;function polyStart(id){poly={id,pts:[]};sel=id;paint()}
+const cv=document.getElementById('cv');function paint(){const f=curFrame();cv.width=f.width*scale;cv.height=f.height*scale;const g=cv.getContext('2d');g.drawImage(img,0,0,cv.width,cv.height);
+for(const b of fstate().boxes){g.lineWidth=b.box_id===sel?3:2;g.strokeStyle=b.box_id===sel?'#dc2626':(b.human_verified?'#16a34a':'#f59e0b');g.strokeRect(b.x0*scale,b.y0*scale,(b.x1-b.x0)*scale,(b.y1-b.y0)*scale);
+ if(b.polygon){g.beginPath();b.polygon.forEach((p,k)=>k?g.lineTo(p[0]*scale,p[1]*scale):g.moveTo(p[0]*scale,p[1]*scale));g.closePath();g.strokeStyle='#2563eb';g.stroke()}}
+if(curFrame().pipeline_tile&&hint){const t=curFrame().pipeline_tile;g.setLineDash([4,3]);g.strokeStyle='#888';g.strokeRect(t[0]*scale,t[1]*scale,(t[2]-t[0])*scale,(t[3]-t[1])*scale);g.setLineDash([])}}
+function px(ev){const r=cv.getBoundingClientRect(),f=curFrame();return [Math.max(0,Math.min(f.width,(ev.clientX-r.left)*f.width/r.width)),Math.max(0,Math.min(f.height,(ev.clientY-r.top)*f.height/r.height))]}
+cv.addEventListener('pointerdown',ev=>{const [x,y]=px(ev);if(poly){poly.pts.push([x,y]);if(poly.pts.length===4){const b=B(poly.id);setB(b,'polygon',poly.pts.map(p=>[+p[0].toFixed(1),+p[1].toFixed(1)]));poly=null}paint();return}
+ const tol=8/scale;for(const b of fstate().boxes.slice().reverse()){const cs=[['x0','y0'],['x1','y0'],['x0','y1'],['x1','y1']];for(const c of cs){if(Math.abs(b[c[0]]-x)<tol&&Math.abs(b[c[1]]-y)<tol){sel=b.box_id;drag={b,mode:'corner',c};return}}
+ if(x>b.x0&&x<b.x1&&y>b.y0&&y<b.y1){sel=b.box_id;drag={b,mode:'move',x,y,orig:[b.x0,b.y0,b.x1,b.y1]};paint();return}}
+ drag={mode:'new',x0:x,y0:y};cv.setPointerCapture(ev.pointerId)});
+cv.addEventListener('pointermove',ev=>{if(!drag)return;const [x,y]=px(ev);const g=cv.getContext('2d');if(drag.mode==='new'){paint();g.strokeStyle='#dc2626';g.strokeRect(drag.x0*scale,drag.y0*scale,(x-drag.x0)*scale,(y-drag.y0)*scale);return}
+ const b=drag.b;if(drag.mode==='corner'){b[drag.c[0]]=x;b[drag.c[1]]=y}else{const dx=x-drag.x,dy=y-drag.y;[b.x0,b.y0,b.x1,b.y1]=[drag.orig[0]+dx,drag.orig[1]+dy,drag.orig[2]+dx,drag.orig[3]+dy]}paint()});
+cv.addEventListener('pointerup',ev=>{if(!drag)return;const [x,y]=px(ev);if(drag.mode==='new'){if(Math.abs(x-drag.x0)>3&&Math.abs(y-drag.y0)>3)newBox(Math.min(x,drag.x0),Math.min(y,drag.y0),Math.max(x,drag.x0),Math.max(y,drag.y0))}
+ else{const b=drag.b;const n=[Math.min(b.x0,b.x1),Math.min(b.y0,b.y1),Math.max(b.x0,b.x1),Math.max(b.y0,b.y1)];[b.x0,b.y0,b.x1,b.y1]=n.map(v=>+v.toFixed(1));b.revision++;b.reviewed_at=now();log('box_edit',{box_id:b.box_id,box:n})}drag=null;draw()});
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='PageDown')go(1);if(e.key==='PageUp')go(-1);if(e.key==='+'){scale=Math.min(4,scale*1.25);paint()}if(e.key==='-'){scale=Math.max(.5,scale/1.25);paint()}
+ if((e.key==='Delete'||e.key==='Backspace')&&sel)delBox(sel);if(e.key==='ArrowRight'){fi=Math.min(curItem().frames.length-1,fi+1);sel=null;draw()}if(e.key==='ArrowLeft'){fi=Math.max(0,fi-1);sel=null;draw()}});
+const COLS=["dataset_id","run_id","item","physical_target_id","visit_id","frame_path","frame_id","frame_sha256","width","height","x0","y0","x1","y1","visual_type","localization_role","text_readability","reviewer","reviewed_at","human_verified","label_revision","box_id","box_revision","polygon","frame_status","target_in_model_crop","test_only","note"];
+function q(v){v=v==null?'':String(v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function buildRows(){const out=[];for(const it of DOC.items){const si=S.items[it.item];if(!si)continue;for(const f of it.frames){const st=si.frames[f.frame_sha256];if(!st)continue;
+ for(const b of st.boxes)out.push({dataset_id:it.dataset_id,run_id:it.run_id,item:it.item,physical_target_id:b.physical_target_id,visit_id:b.visit_id,frame_path:f.frame_path,frame_id:f.frame_id,
+ frame_sha256:f.frame_sha256,width:f.width,height:f.height,x0:b.x0,y0:b.y0,x1:b.x1,y1:b.y1,visual_type:b.visual_type,localization_role:b.localization_role,text_readability:b.text_readability,
+ reviewer:S.reviewer,reviewed_at:b.reviewed_at,human_verified:b.human_verified?'true':'false',label_revision:DOC.label_revision,box_id:b.box_id,box_revision:b.revision,
+ polygon:b.polygon?JSON.stringify(b.polygon):'',frame_status:st.status||'',target_in_model_crop:b.target_in_model_crop,test_only:b.test_only?'true':'false',note:b.note})}}return out}
+function buildCSV(){return [COLS.join(',')].concat(buildRows().map(r=>COLS.map(c=>q(r[c])).join(','))).join('\r\n')+'\r\n'}
+function buildJSON(){return JSON.stringify({schema:'sem1-human-bbox-1',label_revision:DOC.label_revision,exported_at:now(),reviewer:S.reviewer,provenance:DOC.provenance,state:S},null,1)}
+function importJSON(o){if(!o||o.schema!=='sem1-human-bbox-1'||o.label_revision!==DOC.label_revision)throw new Error('schema/revision mismatch');S=o.state;save();draw()}
+function loadFile(f){const r=new FileReader();r.onload=()=>{try{importJSON(JSON.parse(r.result));alert('불러옴')}catch(e){alert('불러오기 실패: '+e.message)}};r.readAsText(f)}
+function dl(kind){const blob=new Blob([kind==='csv'?'﻿'+buildCSV():buildJSON()],{type:kind==='csv'?'text/csv':'application/json'});const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);a.download=kind==='csv'?'HUMAN_BBOX.csv':'sem1_labels_state.json';a.click()}
+window.SEM1={buildCSV,buildJSON,importJSON,newBox,setB,B,state:()=>S,DOC,select:(g,i,f)=>{gi=g;ii=i;fi=f;draw()}};
+const gs=document.getElementById('grp');gs.innerHTML=GROUPS.map((g,k)=>`<option value="${k}">${g} (${itemsOf(k).length})</option>`).join('');gs.onchange=()=>{gi=+gs.value;ii=0;fi=0;sel=null;draw()};draw();
+</script></body></html>

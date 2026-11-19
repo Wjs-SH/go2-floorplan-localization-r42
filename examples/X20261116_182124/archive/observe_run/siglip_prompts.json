@@ -1,0 +1,9 @@
+{
+ "prompts": [
+  "a small room name plate",
+  "a small room name plate near a door",
+  "a hallway sign perpendicular to the wall"
+ ],
+ "env": "roomstd",
+ "model": "/home/unitree/sci_ws/models/siglip-base-patch16-224"
+}

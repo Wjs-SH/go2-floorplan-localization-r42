@@ -1,0 +1,83 @@
+{
+ "legacy": {
+  "sim_floor": 0.078,
+  "sign_max_width_m": 0.85,
+  "floor_band_m": [
+   0.6,
+   2.8
+  ],
+  "board_max": 0.02
+ },
+ "A1": {
+  "window": 3,
+  "min_pass": 1,
+  "min_scenes": 2
+ },
+ "A2": {
+  "neg_margin": 0.0,
+  "ctx_margin": 0.02,
+  "glare_sat_max": 0.3,
+  "glare_spec_max": 0.3,
+  "horizontal_max_cos": 0.7,
+  "reject_elevator": true,
+  "min_depth_valid": 0.3,
+  "neg_classes": [
+   "poster",
+   "board",
+   "directory",
+   "light"
+  ],
+  "ctx_classes": [
+   "poster",
+   "board",
+   "directory"
+  ]
+ },
+ "A3": {
+  "d_min_m": 1.0,
+  "d_max_m": 5.0,
+  "obliquity_max_deg": 80,
+  "edge_px": 6,
+  "min_text_px": 18,
+  "stop_reaction_s": 1.5,
+  "max_speed_mps": 1.2
+ },
+ "A4": {
+  "enabled": true
+ },
+ "dedup": {
+  "same_m": 2.0,
+  "same_sec": 60.0
+ },
+ "event": {
+  "stable_lin_mps": 0.05,
+  "stable_yaw_dps": 3.0,
+  "stable_hold_s": 0.7,
+  "wait_stable_timeout_s": 20.0,
+  "aim_timeout_s": 25.0,
+  "capture_retries": 2,
+  "min_capture_sharp": 40.0,
+  "max_capture_sat": 0.08
+ },
+ "_selection": {
+  "source": "tools/tune_dev.py grid (1536 configs) on dev S-1F only; among the 220 configs meeting recall>=A0, many tie at A3 precision 6/6; tie broken by design intent: keep poster/board/directory/light tile negatives + context crop check, sat 0.3, operator reaction 1.5 s",
+  "dev_A3": {
+   "stops": 7,
+   "labelled": 6,
+   "pos": 6,
+   "prec": 1.0,
+   "pos_spots": 6
+  },
+  "dev_A0": {
+   "stops": 14,
+   "labelled": 13,
+   "pos": 5,
+   "prec": 0.385,
+   "pos_spots": 5
+  },
+  "profiles": {
+   "default": "obliquity_max_deg=80",
+   "readable": "obliquity_max_deg=65 (readability-oriented; dev A3 2/2, recall 2/11)"
+  }
+ }
+}
