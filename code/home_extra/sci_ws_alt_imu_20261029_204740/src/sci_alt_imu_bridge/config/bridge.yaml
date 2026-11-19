@@ -1,0 +1,15 @@
+# sci_alt_imu_bridge parameters (independent path; never remaps onto existing topics)
+sci_alt_imu_bridge:
+  ros__parameters:
+    input_topic: /lowstate
+    input_reliable: false        # /lowstate publisher is RELIABLE; existing readers are BEST_EFFORT -> no ACK load on Go2
+    input_depth: 50
+    output_topic: /sci_alt_imu/imu
+    output_depth: 200
+    health_topic: /sci_alt_imu/health
+    frame_id: go2_body_imu       # URDF link "imu" (base_link -> imu, rpy 0); kept distinct on purpose
+    gap_ms: 50.0
+    clock_step_ms: 20.0
+    recover_s: 1.0
+    timing_every: 10
+    max_log_bytes: 52428800

@@ -1,0 +1,42 @@
+#!/bin/bash
+# record_calib.sh APPROVAL_TEXT_FILE [--duration S]
+# Synchronous raw recording for LiDAR-IMU calibration: /lidar_points + /lowstate (+ /utlidar/imu, /utlidar/lidar_state,
+# /tf_static for the L1 chain cross-check). This adds a HIGH-BANDWIDTH /lidar_points subscriber, which the operational rule
+# forbids ("Never: /lidar_points subscription"); it runs ONLY with a file containing the user's explicit one-time exception.
+# No FAST-LIO, no E2/SigLIP/E6 may run. Robot motion is done by the operator with the joystick; this script never commands it.
+source "$(dirname "$0")/common.sh"
+appr="${1:?APPROVAL_TEXT_FILE with the user verbatim exception text}"; shift
+dur=240
+while [ $# -gt 0 ]; do case "$1" in --duration) dur="$2"; shift 2;; *) die "unknown arg $1";; esac; done
+[ -s "$appr" ] || die "no approval text file"
+grep -q "lidar_points" "$appr" || die "approval text must name /lidar_points explicitly"
+[ "$dur" -le 300 ] || die "duration capped at 300 s"
+run=$(new_run_dir calib_record); cp -p "$appr" "$run/APPROVAL_TEXT.txt"; sha256sum "$appr" > "$run/APPROVAL_TEXT.sha256"
+"$(dirname "$0")/preflight.sh" --live "$run" || die "live preflight failed (see $run/preflight.txt)"
+for p in e2_worker observe_keeper siglip_worker e6_precision_bridge; do [ "$(pgrep -fc "python3 .*$p" || true)" = 0 ] || die "$p running"; done
+ros_env live "$run"
+TOPICS="/lidar_points /lowstate"   # 2026-10-29 user exception scope: exactly these two topics
+# 1) 10 s load test
+owned_start "$run" rec_loadtest "$run/rec_loadtest.out" bash -c "cd '$run' && exec ros2 bag record -o bag_loadtest $TOPICS"
+cpu=0; for i in $(seq 1 10); do sleep 1; read -r p _ < "$run/owned/rec_loadtest.pid"; c=$(ps -o pcpu= --ppid "$p" -p "$p" 2>/dev/null | awk '{s+=$1} END{print int(s)}'); [ "${c:-0}" -gt "$cpu" ] && cpu=$c; done
+owned_stop "$run"; rm -f "$run/owned/rec_loadtest.pid"
+size=$(du -sm "$run/bag_loadtest" | cut -f1)
+python3 -c 'import re,sys; t=open(sys.argv[1]).read(); [print(n, c) for n, c in re.findall(r"name: (\S+).*?message_count: (\d+)", t, re.S)]' "$run/bag_loadtest/metadata.yaml" > "$run/loadtest_counts.txt"
+lp=$(awk '$1=="/lidar_points"{print $2}' "$run/loadtest_counts.txt"); ls_=$(awk '$1=="/lowstate"{print $2}' "$run/loadtest_counts.txt")
+say "load test: recorder cpu<=${cpu}% size ${size}MB lidar_points=${lp:-0} lowstate=${ls_:-0} (10 s)"
+[ "${lp:-0}" -ge 80 ] && [ "${ls_:-0}" -ge 4500 ] || die "load test: rates too low (lidar ${lp:-0}/100, lowstate ${ls_:-0}/5000) — not recording"
+[ "$cpu" -le 150 ] || die "load test: recorder CPU ${cpu}% too high"
+need=$(( size * dur / 10 * 2 )); free=$(df -BM --output=avail "$HOME" | tail -1 | tr -dc 0-9)
+[ "$free" -gt $(( need + 5000 )) ] || die "disk: need ~${need}MB + 5GB margin, free ${free}MB"
+# 2) bounded main recording (split files of 1 GB)
+say "RECORDING ${dur}s -> $run/bag_calib. Operator follows the runbook phases (static 30 s, slow yaw both ways, pitch/roll posture, short straight/curve, static 30 s)."
+date '+START %F %T.%N' > "$run/phases.txt"
+owned_start "$run" rec_main "$run/rec_main.out" bash -c "cd '$run' && exec timeout -s INT $dur ros2 bag record -b 1000000000 -o bag_calib $TOPICS"
+read -r p _ < "$run/owned/rec_main.pid"
+while [ -n "$(proc_start_time "$p")" ]; do
+  sleep 2; t=$(cat /sys/class/thermal/thermal_zone*/temp | sort -n | tail -1); m=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
+  if [ $((t/1000)) -ge 80 ] || [ "$m" -lt 2500 ]; then say "ABORT: temp ${t} mem ${m}"; owned_stop "$run"; break; fi
+done
+date '+END %F %T.%N' >> "$run/phases.txt"
+(cd "$run/bag_calib" && sha256sum * > ../bag_calib.SHA256SUMS && chmod a-w *)
+say "bag sealed read-only: $run/bag_calib (hashes $run/bag_calib.SHA256SUMS)"

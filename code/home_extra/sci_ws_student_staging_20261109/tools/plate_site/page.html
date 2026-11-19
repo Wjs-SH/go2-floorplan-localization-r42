@@ -1,0 +1,161 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>명판 재촬영 실험</title><style>
+:root{--bg:#f6f7f9;--fg:#111827;--mut:#6b7280;--card:#fff;--line:#d1d5db;--acc:#1d4ed8;--accfg:#fff;--ok:#047857;--bad:#b91c1c;--warn:#b45309;--soft:#e5e7eb}
+@media (prefers-color-scheme: dark){:root{--bg:#111827;--fg:#f3f4f6;--mut:#9ca3af;--card:#1f2937;--line:#374151;--acc:#60a5fa;--accfg:#0b1220;--ok:#34d399;--bad:#f87171;--warn:#fbbf24;--soft:#374151}}
+*{box-sizing:border-box}body{margin:0;padding:10px 14px 60px;background:var(--bg);color:var(--fg);font:17px/1.45 system-ui,sans-serif}
+h1{font-size:19px;margin:2px 0 8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--mut)}.chip.ok{color:var(--ok);border-color:var(--ok)}.chip.bad{color:var(--bad);border-color:var(--bad)}
+.grid{display:grid;grid-template-columns:1fr;gap:10px}@media (min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}.card h2{font-size:15px;margin:0 0 8px;color:var(--mut);font-weight:600}
+.mut{color:var(--mut);font-size:14px}.big{font-size:32px;font-weight:700;line-height:1.2}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.kv{flex:1 1 110px;min-width:110px}.kv b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+button{font:inherit;font-weight:600;padding:14px 12px;border-radius:10px;border:2px solid var(--line);background:var(--card);color:var(--fg);min-height:52px;touch-action:manipulation}
+button.pri{background:var(--acc);border-color:var(--acc);color:var(--accfg);font-size:21px;width:100%;min-height:68px}button.on{border-color:var(--acc);color:var(--acc)}
+button:disabled{opacity:.45}.seg{display:flex;gap:8px}.seg button{flex:1}
+.imgwrap{position:relative;width:100%;background:#000;border-radius:8px;overflow:hidden;aspect-ratio:4/3}.imgwrap img{width:100%;height:100%;object-fit:contain;display:block}
+.imgwrap canvas{position:absolute;left:0;top:0;width:100%;height:100%}.wide{aspect-ratio:16/9}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:330px}.pad button{min-height:58px;font-size:22px}.pad span{display:block}
+#steps2 div{padding:4px 0}#steps2 .now{font-weight:700;color:var(--acc)}#steps2 .done{color:var(--mut);text-decoration:line-through}
+#toast{position:fixed;left:12px;right:12px;bottom:10px;padding:12px 14px;border-radius:10px;background:var(--fg);color:var(--bg);font-weight:600;display:none;z-index:9}
+#log div{font-size:13px;color:var(--mut);border-top:1px solid var(--soft);padding:3px 0}input[type=number]{font:inherit;width:92px;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
+details summary{cursor:pointer;color:var(--mut);padding:6px 0}.warn{color:var(--warn);font-size:14px}
+/* 본 홈페이지의 "명판 촬영" 탭 안에 띄울 때(?embed=1): 케이스 1 만 쓰고, 본 홈페이지와 같은 어두운 색으로 맞춘다 */
+html.embed{--bg:#111827;--fg:#f3f4f6;--mut:#9ca3af;--card:#1f2937;--line:#374151;--acc:#60a5fa;--accfg:#0b1220;--ok:#34d399;--bad:#f87171;--warn:#fbbf24;--soft:#374151}
+html.embed .noembed{display:none!important}html.embed body{padding:2px 0 4px;background:transparent}html.embed #toast{display:none!important}
+</style></head><body>
+<h1><span class="noembed">명판 재촬영 실험 </span><span class="chip" id="c_exp">실험 –</span><span class="chip" id="c_sens">위치</span><span class="chip" id="c_sig">SigLIP</span><span class="chip" id="c_pt">팬틸트</span>
+<button id="snd" style="min-height:36px;padding:4px 10px;font-size:14px">소리 켜기</button></h1>
+<div class="card" id="simbar" style="display:none;margin-bottom:10px"><h2>시뮬 — 지난 실험 기록 재생. 팬틸트 사진은 고정 카메라 사진을 조준 방향으로 잘라 확대한 것입니다. 일시정지 = 그 자리에 멈춘 것.</h2>
+ <div class="row" style="align-items:center"><select id="sim_ds" style="font:inherit;padding:10px;border-radius:8px;max-width:100%"></select>
+ <button id="sim_play">▶ 재생</button><span class="seg" id="sim_sp"><button data-v="1">1×</button><button data-v="2">2×</button><button data-v="4">4×</button></span>
+ <button id="sim_b">−10초</button><button id="sim_f">+10초</button><button id="sim_next">다음 정지 요청 6초 전으로</button><span class="mut" id="sim_t"></span></div>
+ <input type="range" id="sim_seek" min="0" max="100" step="1" style="width:100%;margin-top:8px"></div>
+<div class="seg noembed" style="margin-bottom:10px"><button id="case1">케이스 1 · 머리는 진행 방향, 팬틸트만</button><button id="case2">케이스 2 · 표지 쪽으로 돌고 머리 들기</button></div>
+<div class="grid">
+<div class="card"><h2>안내</h2><div class="big" id="g_title">–</div><div class="mut" id="g_sub" style="margin:6px 0 10px"></div>
+ <div class="row"><div class="kv"><span class="mut">앞</span><b id="n_fwd">–</b></div><div class="kv"><span class="mut">옆</span><b id="n_left">–</b></div>
+ <div class="kv"><span class="mut">거리</span><b id="n_rng">–</b></div><div class="kv"><span class="mut">필요한 팬 / 틸트</span><b id="n_need">–</b></div><div class="kv noembed"><span class="mut">몸 들림</span><b id="n_pitch">–</b></div></div>
+ <div id="aheadrow" class="row" style="margin-top:8px;align-items:center"><span class="mut">정지 지점 — 표지를 앞에 두는 거리</span><span class="seg" id="aheadsel"><button data-m="0.5">0.5 m</button><button data-m="1">1.0 m</button><button data-m="1.5">1.5 m</button></span></div>
+ <div id="steps2" style="margin-top:8px;display:none"><div id="s2A">1. 표지 옆까지 전진</div><div id="s2B">2. 표지 쪽으로 회전</div><div id="s2C">3. select 누르고 머리 들기</div><div id="s2D">4. 조준 + 촬영</div></div>
+ <div class="mut" id="tg" style="margin-top:8px"></div>
+ <div class="row" style="margin-top:8px"><button id="auto">자동 기억</button><button id="forget">기억 지우기</button><button id="done">이 표지 끝 (정면 복귀)</button></div></div>
+<div class="card"><h2>고정 카메라 · SigLIP 영역 <span id="rs_info"></span></h2><div class="imgwrap"><img id="rs" alt=""><canvas id="ov"></canvas></div>
+ <div class="mut" id="rs_help" style="margin-top:6px">상자를 누르면 그 표지를 기억합니다. 상자가 없으면 표지 위를 직접 누르세요.</div></div>
+<div class="card"><h2>팬틸트 카메라 <span id="pt_info"></span></h2>
+ <div class="row" style="margin-bottom:8px"><button id="pt_conn">팬틸트 연결</button><button id="home">정면으로</button></div>
+ <div class="warn" id="pt_warn">넓은 범위(팬 20~180, 틸트 100~180)는 9월 재장착 뒤 다시 확인하지 않았습니다. 처음에는 팬틸트를 보면서 눌러 주세요.</div>
+ <div class="imgwrap wide" style="margin:8px 0"><img id="ptview" alt=""></div>
+ <button class="pri" id="aim">조준 + 촬영</button><div class="mut" id="aim_why" style="margin:4px 0 10px"></div>
+ <div class="row"><div class="pad"><span></span><button data-n="0,1">▲</button><span></span><button data-n="-1,0">◀</button><button id="reshoot" style="font-size:15px">다시 촬영</button><button data-n="1,0">▶</button><span></span><button data-n="0,-1">▼</button><span></span></div>
+ <div style="flex:1 1 160px"><div class="mut">한 번에 옮길 각도</div><div class="seg" id="stepsel"><button data-s="2">2°</button><button data-s="5">5°</button><button data-s="10">10°</button></div>
+ <button id="center" style="width:100%;margin-top:8px">표지 가운데로</button></div></div>
+ <details><summary>수동 이동 · 범위 점검</summary><div class="row" style="align-items:center"><span>팬 명령</span><input type="number" id="m_pan" step="1"><span>틸트 명령</span><input type="number" id="m_tilt" step="1"><button id="m_go">이동 + 촬영</button></div>
+ <div class="mut" id="lim"></div></details></div>
+<div class="card"><h2>마지막 사진 <span id="ph_n"></span></h2><div class="imgwrap wide"><img id="ph" alt=""></div><div class="mut" id="ph_info" style="margin:6px 0"></div>
+ <div class="row"><button data-l="읽힘">읽힘</button><button data-l="흐림">흐림</button><button data-l="표지 없음">표지 없음</button></div>
+ <button class="pri" id="use" style="margin-top:10px">이 사진으로 위치추정</button><div class="mut" id="use_why" style="margin:4px 0 6px"></div>
+ <div id="use_info" style="font-size:15px;line-height:1.5"></div>
+ <h2 style="margin-top:12px">기록</h2><div id="log"></div></div>
+</div><div id="toast"></div>
+<script>
+const $=id=>document.getElementById(id);
+const EMBED=new URLSearchParams(location.search).get("embed")==="1"; let forcing=false;   // ?embed=1 (본 홈페이지 탭 안): 케이스 1 전용
+if(EMBED) document.documentElement.classList.add("embed");
+let S=null, ac=null, prev={}, stepDeg=5, lastSeq=null, ptOn=false, tHide=null, manualFilled=false;
+function beep(f,ms,when){ if(!ac) return; const o=ac.createOscillator(), g=ac.createGain(); o.frequency.value=f; o.connect(g); g.connect(ac.destination);
+  const t=ac.currentTime+(when||0); g.gain.setValueAtTime(0.25,t); g.gain.setValueAtTime(0,t+ms/1000); o.start(t); o.stop(t+ms/1000+0.02); }
+$("snd").onclick=()=>{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); ac.resume(); beep(880,150); $("snd").textContent="소리 켜짐"; };
+function toast(m,ok){ if(!m) return; if(EMBED){ try{ parent.postMessage({src:"plate_site",toast:m,ok:ok},"*"); }catch(e){} } const t=$("toast"); t.textContent=m; t.style.display="block"; t.style.background=ok?"var(--fg)":"var(--bad)"; clearTimeout(tHide); tHide=setTimeout(()=>t.style.display="none",ok?2500:5000); if(ok===false) beep(220,300); }
+async function post(path,body){ try{ const r=await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body||{})}); const j=await r.json(); toast(j.msg||(j.ok?"":"실패"),j.ok); tick(); return j; }catch(e){ toast("연결 안 됨",false); } }
+document.querySelectorAll("#aheadsel button").forEach(b=>b.onclick=()=>post("/api/ahead",{m:Number(b.dataset.m)}));
+$("case1").onclick=()=>post("/api/case",{case:1}); $("case2").onclick=()=>post("/api/case",{case:2});
+$("auto").onclick=()=>post("/api/auto",{on:!(S&&S.auto)}); $("forget").onclick=()=>post("/api/forget"); $("done").onclick=()=>post("/api/done");
+// 확인 받기: 직접 연 화면은 브라우저 확인 창, 본 홈페이지 카드 안(다른 출처의 iframe)은 6초 안에 한 번 더 누르기 — 브라우저에 따라 iframe 의 확인 창을 막기 때문
+let armed={k:null,t:0};
+function ask(msg,key){ if(!EMBED) return confirm(msg); const now=Date.now(); if(armed.k===key&&now-armed.t<6000){ armed={k:null,t:0}; return true; }
+  armed={k:key,t:now}; toast(msg+" 맞으면 6초 안에 한 번 더 누르세요.",true); return false; }
+$("pt_conn").onclick=()=>{ if(!S) return; if(S.pt.connected){ if(ask("팬틸트를 정면으로 돌리고 연결을 끊을까요?","off")) post("/api/pt",{op:"disconnect"}); }
+  else if(ask("팬틸트를 연결합니다. 연결하는 순간 팬틸트가 한 번 움직입니다(부팅 자세 → 정면). 주변에 걸리는 것이 없는지 확인하세요.","on")) post("/api/pt",{op:"connect"}); };
+$("home").onclick=()=>post("/api/pt",{op:"home"}); $("aim").onclick=()=>post("/api/pt",{op:"aim"}); $("reshoot").onclick=()=>post("/api/pt",{op:"reshoot"}); $("center").onclick=()=>post("/api/pt",{op:"center"});
+document.querySelectorAll(".pad button[data-n]").forEach(b=>b.onclick=()=>{ const [x,y]=b.dataset.n.split(",").map(Number); post("/api/pt",{op:"nudge",dx:x*stepDeg,dy:y*stepDeg}); });
+document.querySelectorAll("#stepsel button").forEach(b=>b.onclick=()=>{ stepDeg=Number(b.dataset.s); paintStep(); });
+function paintStep(){ document.querySelectorAll("#stepsel button").forEach(b=>b.className=Number(b.dataset.s)===stepDeg?"on":""); } paintStep();
+$("m_go").onclick=()=>{ const p=parseFloat($("m_pan").value), t=parseFloat($("m_tilt").value); if(isNaN(p)||isNaN(t)) return toast("숫자를 넣으세요",false); post("/api/pt",{op:"goto",pan:p,tilt:t}); };
+document.querySelectorAll("button[data-l]").forEach(b=>b.onclick=()=>post("/api/label",{label:b.dataset.l}));
+$("use").onclick=()=>post("/api/use");
+const VERDICT={REGION_CANDIDATE_READY:"위치 후보 확정 → E7 검증",MORE_OBSERVATION_REQUIRED:"표지 하나 더 필요",CANDIDATE_MISSING:"맞는 위치 후보 없음",NO_FIX:"확정 불가",PROVISIONAL:"잠정(한 장)"};
+function esc(t){ return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+function paintUse(u){ u=u||{}; $("use").disabled=!!u.block; $("use_why").textContent=u.block||""; const p=u.pair; if(!p){ $("use_info").innerHTML=""; return; }
+  const rows=p.rows.map(r=>"<div>"+esc(r.photo)+" → "+(r.read?(r.ocr.length?r.ocr.map(l=>"<b>"+esc(l[0])+"</b> ("+l[1].toFixed(2)+")").join(", "):"글자를 읽지 못함"):(r.seen?"판독 중…":"운영판이 받는 중…"))+"</div>").join("");
+  const v=p.verdict?(VERDICT[p.verdict]||p.verdict):(p.state||"");
+  $("use_info").innerHTML="<div class='mut'>위치추정에 넘긴 사진 "+p.rows.length+"장</div>"+rows+(v?"<div style='margin-top:4px'>판정: <b>"+esc(v)+"</b>"+(p.floors&&p.floors.length?" · 층 "+esc(p.floors.join(", ")):"")+(p.e7?" · E7 "+esc(p.e7):"")+"</div>":"")+(p.why?"<div class='mut'>"+esc(p.why)+"</div>":""); }
+$("ov").onclick=e=>{ if(!S||lastSeq===null) return toast("고정 카메라 화면이 없습니다",false); const r=$("ov").getBoundingClientRect(), a=640/480; let w=r.width,h=r.height,ox=0,oy=0;
+  if(w/h>a){ w=h*a; ox=(r.width-w)/2; } else { h=w/a; oy=(r.height-h)/2; }
+  const u=(e.clientX-r.left-ox)/w*640, v=(e.clientY-r.top-oy)/h*480; if(u<0||u>640||v<0||v>480) return; post("/api/pick",{u:u,v:v,seq:lastSeq}); };
+function draw(){ const c=$("ov"), r=c.getBoundingClientRect(); if(!r.width) return; c.width=r.width; c.height=r.height; const g=c.getContext("2d"); g.clearRect(0,0,c.width,c.height); if(!S) return;
+  const a=640/480; let w=r.width,h=r.height,ox=0,oy=0; if(w/h>a){ w=h*a; ox=(r.width-w)/2; } else { h=w/a; oy=(r.height-h)/2; } const k=w/640;
+  const thr=S.rs.thr||0.1; g.font="600 13px system-ui"; g.lineWidth=2;
+  (S.rs.regions||[]).forEach(q=>{ const b=q.box, hot=(q.sim||0)>=thr&&q.state!=="REJECT"; g.strokeStyle=hot?"#22c55e":"#9ca3af"; g.strokeRect(ox+b[0]*k,oy+b[1]*k,(b[2]-b[0])*k,(b[3]-b[1])*k);
+    const t=(q.sim==null?"":q.sim.toFixed(2)+" · ")+q.z.toFixed(1)+"m"; const tw=g.measureText(t).width+6; const ly=Math.max(oy+b[1]*k,oy+17); g.fillStyle=hot?"#16a34a":"#4b5563"; g.fillRect(ox+b[0]*k,ly-17,tw,17); g.fillStyle="#fff"; g.fillText(t,ox+b[0]*k+3,ly-4); });
+  if(S.sel){ const x=ox+S.sel.u*k, y=oy+S.sel.v*k; g.strokeStyle="#f59e0b"; g.lineWidth=3; g.beginPath(); g.moveTo(x-16,y); g.lineTo(x+16,y); g.moveTo(x,y-16); g.lineTo(x,y+16); g.stroke(); } }
+$("rs").onload=draw; window.addEventListener("resize",draw);
+function num(v,u,d){ return (v===null||v===undefined)?"–":(Number(v).toFixed(d===undefined?1:d)+u); }
+function chip(id,txt,ok){ const c=$(id); c.textContent=txt; c.className="chip "+(ok===true?"ok":ok===false?"bad":""); }
+function sounds(s){ const g=s.guide||{}, t=s.target?s.target.id:null;
+  if(t!==prev.t&&t!==null){ beep(880,120); beep(1175,160,0.16); }
+  if(s.case===1&&g.remaining!=null&&prev.rem!=null){ if(prev.rem>1.0&&g.remaining<=1.0) beep(700,120); if(prev.rem>0.5&&g.remaining<=0.5){ beep(700,100); beep(700,100,0.18); } }
+  if(g.phase!==prev.phase&&prev.phase!==undefined){ if(g.phase==="stop"||g.phase==="D"){ beep(988,140); beep(988,140,0.25); beep(988,140,0.5); } else if(g.phase==="passed"){ beep(220,600); } else if(g.phase==="over"){ beep(440,160); beep(440,160,0.25); } else if(g.phase==="B"||g.phase==="C"){ beep(740,180); } }
+  if(prev.busy&&!s.pt.busy){ if(s.pt.err) beep(220,400); else beep(1320,90); }
+  prev={t:t,rem:g.remaining,phase:g.phase,busy:s.pt.busy}; }
+async function tick(){ let s; try{ s=await (await fetch("/api/state")).json(); }catch(e){ chip("c_exp","연결 끊김",false); return; } S=s;
+  const g=s.guide||{}, x=s.sens||{}, pt=s.pt||{};
+  if(EMBED){ if(s.case!==1&&!forcing){ forcing=true; fetch("/api/case",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({case:1})}).catch(()=>{}).then(()=>{ forcing=false; }); }
+    try{ parent.postMessage({src:"plate_site",exp:s.exp.id||null,state:s.exp.state||null,active:!!x.active,consent:!!s.exp.consent,plate:!!s.exp.plate,block:s.exp.block||null,verdict:(s.use&&s.use.pair&&s.use.pair.verdict)||null,target:!!s.target,phase:g.phase||null,
+      remaining:(typeof g.remaining==="number")?g.remaining:null,pt:!!pt.connected,sound:!!ac,h:Math.ceil(document.body.getBoundingClientRect().height)},"*"); }catch(e){} }
+  chip("c_exp", s.exp.id?(s.exp.id.slice(-11)+" · "+s.exp.state):"실험 없음", x.active?true:null);
+  chip("c_sens", x.odom_ok?("위치 "+(x.stopped?"정지":"이동 중")):"위치 없음", x.active?x.odom_ok:null);
+  chip("c_sig", x.scene_age==null?"SigLIP –":("SigLIP "+x.scene_age+"초 전"), x.active?(x.scene_age!=null&&x.scene_age<5):null);
+  chip("c_pt", pt.connected?(pt.busy?("팬틸트 "+(pt.job||"동작 중")):"팬틸트 연결됨"):(pt.starting?"팬틸트 연결 중":"팬틸트 꺼짐"), pt.connected?true:null);
+  $("case1").className=s.case===1?"on":""; $("case2").className=s.case===2?"on":""; $("steps2").style.display=s.case===2&&s.target?"block":"none";
+  ["A","B","C","D"].forEach((p,i)=>{ const cur=["A","B","C","D"].indexOf(g.phase); $("s2"+p).className=i<cur?"done":(i===cur?"now":""); });
+  $("g_title").textContent=g.title||"–"; $("g_sub").textContent=g.sub||"";
+  $("n_fwd").textContent=num(g.fwd," m",2); $("n_left").textContent=g.left==null?"–":(Math.abs(g.left).toFixed(2)+" m "+(g.left>=0?"왼":"오")); $("n_rng").textContent=num(g.range," m",2);
+  $("n_need").textContent=g.need?(g.need.pan.toFixed(0)+" / "+g.need.tilt.toFixed(0)+" (옆 "+g.need.side_deg+"°)"+(g.need.ok?"":" ✕")):"–";
+  $("aheadrow").style.display=s.case===1?"flex":"none"; document.querySelectorAll("#aheadsel button").forEach(b=>b.className=Math.abs(Number(b.dataset.m)-s.ahead)<0.01?"on":""); $("n_need").style.color=g.need&&!g.need.ok?"var(--bad)":"";
+  $("n_pitch").textContent=num(s.pitch_up,"°",0);
+  $("tg").textContent=s.target?("기억한 표지 #"+s.target.id+" · "+s.target.src+(s.target.sim!=null?" · 점수 "+Number(s.target.sim).toFixed(2):"")+" · 처음 거리 "+s.target.z0+" m · 높이 "+s.target.up+" m · "+s.target.age+"초 전"+(s.target.n_refine?" · 위치 갱신 "+s.target.n_refine+"회(가장 가까이 "+s.target.best_rng+" m 에서 봄)":" · 위치 갱신 없음")):"기억한 표지 없음";
+  $("auto").textContent="자동 기억 "+(s.auto?"켜짐":"꺼짐"); $("auto").className=s.auto?"on":""; $("forget").disabled=!s.target; $("done").disabled=!s.target;
+  $("rs_info").textContent=s.rs.seq==null?"· 화면 없음":("· 영역 "+(s.rs.regions||[]).length+"개"+(s.rs.thr?" · 기준 "+Number(s.rs.thr).toFixed(2):""));
+  $("rs_help").textContent=(s.case===2&&s.target&&(g.phase==="C"||g.phase==="D"))?"표지를 누르면 그 점을 조준합니다(조준점 선택).":"상자를 누르면 그 표지를 기억합니다. 상자가 없으면 표지 위를 직접 누르세요.";
+  if(s.rs.seq!==lastSeq){ lastSeq=s.rs.seq; if(lastSeq!==null) $("rs").src="/rs.jpg?seq="+lastSeq; else $("rs").removeAttribute("src"); } draw();
+  $("pt_conn").textContent=pt.connected?"연결 끊기 (정면 복귀)":(pt.starting?"연결 중…":"팬틸트 연결"); $("pt_conn").disabled=!!pt.starting||!!pt.busy; $("pt_conn").className=pt.connected?"on":"";
+  if(EMBED&&armed.k&&Date.now()-armed.t<6000&&!pt.starting) $("pt_conn").textContent=pt.connected?"한 번 더 누르면 연결을 끊습니다":"한 번 더 누르면 연결합니다 (팬틸트가 움직임)";
+  $("pt_info").textContent=pt.connected?("· 지금 명령 팬 "+(pt.cmd?pt.cmd[0]:"–")+" / 틸트 "+(pt.cmd?pt.cmd[1]:"–")+(pt.device_state&&pt.device_state!=="IDLE"?" · 장치 "+pt.device_state:"")):(pt.err?"· "+pt.err:"");
+  if(pt.connected&&!ptOn){ ptOn=true; $("ptview").src="/pt.mjpg?t="+Date.now(); } if(!pt.connected&&ptOn){ ptOn=false; $("ptview").removeAttribute("src"); }
+  $("aim").disabled=!g.can_aim||!!s.exp.block; $("aim_why").textContent=s.exp.block?s.exp.block:g.can_aim?"":(pt.connected?(pt.busy?"팬틸트 동작 중":(s.target?(x.stopped?(g.need&&!g.need.ok?("범위 밖: "+(g.need.why||"")):""):"로봇이 멈추면 누를 수 있습니다"):"표지를 먼저 기억하세요")):"팬틸트를 먼저 연결하세요");
+  const idle=pt.connected&&!pt.busy; ["home","reshoot","center","m_go"].forEach(i=>$(i).disabled=!idle); document.querySelectorAll(".pad button[data-n]").forEach(b=>b.disabled=!idle);
+  $("center").disabled=!idle||!(s.photo&&s.photo.sign&&(s.photo.sign.state==="OFF_CENTER"));
+  if(pt.lim) $("lim").textContent="허용 범위: 팬 "+pt.lim.pan.join("~")+", 틸트 "+pt.lim.tilt.join("~")+" (이동 전 두 축을 "+pt.lim.lash+"° 물렀다 다가가므로 실제 하한은 그만큼 큼). 정면 "+pt.home.join(" / ")+". 팬 명령이 크면 왼쪽, 틸트 명령이 작으면 위쪽.";
+  if(pt.cmd&&!manualFilled){ $("m_pan").value=pt.cmd[0]; $("m_tilt").value=pt.cmd[1]; manualFilled=true; } if(!pt.connected) manualFilled=false;
+  if(s.photo){ const p=s.photo, sg=p.sign||{}, ko={CENTERED:"가운데",OFF_CENTER:"치우침",NOT_FOUND:"못 찾음",CHECK_UNAVAILABLE:"판정 불가"}[sg.state]||sg.state;
+    if(prev.photo!==p.name){ $("ph").src="/photo/"+p.session+"/"+p.name; prev.photo=p.name; }
+    $("ph_n").textContent="· "+s.n_photos+"장째"; $("ph_info").textContent=p.name+" · "+p.basis+" · 팬 "+p.pan+" / 틸트 "+p.tilt+" · 표지 "+ko+(sg.right!=null&&sg.state!=="NOT_FOUND"?(" (오른쪽 "+sg.right+"°, 아래 "+sg.down+"°)"):"")+(sg.sharp!=null?" · 선명도 "+sg.sharp:"")+" · "+p.sec+"초"; }
+  $("log").innerHTML=(s.log||[]).slice().reverse().map(l=>"<div>"+l.replace(/&/g,"&amp;").replace(/</g,"&lt;")+"</div>").join("");
+  paintUse(s.use); paintSim(s.sim); const keep=prev.photo; sounds(s); prev.photo=keep; }
+$("ptview").onerror=()=>{ if(ptOn) setTimeout(()=>{ if(ptOn) $("ptview").src="/pt.mjpg?t="+Date.now(); },2000); };
+let simDrag=false, simFilled="";
+function sim(o){ return post("/api/sim",o); }
+$("sim_play").onclick=()=>sim({op:(S&&S.sim&&S.sim.playing)?"pause":"play"}); $("sim_b").onclick=()=>sim({op:"seek",t:Math.max(0,S.sim.t-10)}); $("sim_f").onclick=()=>sim({op:"seek",t:S.sim.t+10});
+$("sim_next").onclick=()=>sim({op:"next"}); $("sim_ds").onchange=()=>sim({op:"dataset",id:$("sim_ds").value});
+document.querySelectorAll("#sim_sp button").forEach(b=>b.onclick=()=>sim({op:"speed",v:Number(b.dataset.v)}));
+$("sim_seek").oninput=()=>{ simDrag=true; }; $("sim_seek").onchange=()=>{ simDrag=false; sim({op:"seek",t:Number($("sim_seek").value)}); };
+function paintSim(m){ $("simbar").style.display=m?"block":"none"; if(!m) return; const key=m.datasets.map(d=>d.id).join(",");
+  if(key!==simFilled){ simFilled=key; $("sim_ds").innerHTML=m.datasets.map(d=>'<option value="'+d.id+'">'+d.label+'</option>').join(""); }
+  if(document.activeElement!==$("sim_ds")) $("sim_ds").value=m.id; $("sim_play").textContent=m.playing?"⏸ 일시정지 (여기서 멈춤)":"▶ 재생"; $("sim_play").className=m.playing?"on":"";
+  document.querySelectorAll("#sim_sp button").forEach(b=>b.className=Number(b.dataset.v)===m.speed?"on":"");
+  $("sim_seek").max=Math.floor(m.dur); if(!simDrag) $("sim_seek").value=Math.floor(m.t);
+  const nx=m.requests.filter(r=>r>m.t+1)[0]; $("sim_t").textContent=m.t.toFixed(0)+" / "+m.dur.toFixed(0)+"초"+(nx!==undefined?" · 다음 정지 요청까지 "+(nx-m.t).toFixed(0)+"초":"")+(m.depth?"":" · 깊이 영상 없음(상자만 누를 수 있음)")+(m.blocked?" · "+m.blocked:""); }
+window.addEventListener("message",e=>{ const d=e.data; if(!EMBED||e.source!==parent||!d||d.src!=="live2_main") return;      // 본 홈페이지의 단추: 연결 끊기만 받는다
+  if(d.cmd==="disconnect"&&S&&S.pt&&S.pt.connected) post("/api/pt",{op:"disconnect"}); });
+setInterval(tick,400); tick();
+</script></body></html>

@@ -1,0 +1,50 @@
+# fastlio_alt_imu.TEMPLATE.yaml — generated from ~/sci_ws/config/fastlio/fastlio_go2_esy_extrinsic.yaml (sha256 2492f6ca…, unchanged)
+# Changes vs original: imu_topic -> /sci_alt_imu/imu (Go2 body IMU bridge), extrinsic_R/T, time offset and extrinsic_est_en are
+# PLACEHOLDERS filled ONLY by scripts/render_fastlio_cfg.py from a calibration file. Everything else (XT16 preprocess, filters,
+# covariances, publish flags) is byte-identical to the original.
+# fastlio_go2_esy_extrinsic.yaml (2026-10-08) — ~/go2_ws 의 go2_hesai_xt16_flio01_scan10.yaml 을 그대로 복사하고
+# extrinsic_R 만 esy 로스백 정본 값으로 바꿨다(같은 로봇·같은 센서쌍, esy 조건화는 축을 안 바꿈).
+# 로봇 실측(10-08 21:37): 원래 diag(1,-1,-1) 은 IMU 위쪽과 15.3° 어긋남, 이 행렬은 2.3° 차이.
+/**:
+  ros__parameters:
+    feature_extract_enable: false
+    point_filter_num: 1
+    max_iteration: 3
+    filter_size_surf: 0.3
+    filter_size_map: 0.3
+    cube_side_length: 1000.0
+    runtime_pos_log_enable: false
+    map_file_path: "./hesai_map.pcd"
+
+    common:
+      lid_topic: "/lidar_points"
+      imu_topic: "/sci_alt_imu/imu"
+      time_sync_en: false
+      time_offset_lidar_to_imu: __TIME_OFFSET__
+
+    preprocess:
+      lidar_type: 2
+      scan_line: 16
+      scan_rate: 10.0
+      timestamp_unit: 0
+      blind: 0.5
+
+    mapping:
+      acc_cov: 0.3
+      gyr_cov: 0.03
+      b_acc_cov: 0.0001
+      b_gyr_cov: 0.00001
+      fov_degree: 360.0
+      det_range: 100.0
+
+      extrinsic_est_en: __EXTRINSIC_EST__
+
+      extrinsic_R: __EXTRINSIC_R__
+
+      extrinsic_T: __EXTRINSIC_T__
+
+    publish:
+      path_en: true
+      scan_publish_en: true
+      dense_publish_en: true
+      scan_body_pub_en: true

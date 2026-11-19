@@ -18,16 +18,29 @@ Unitree Go2 사족 로봇이 **몇 층의 어디에, 어느 방향으로** 있�
 
 | 경로 | 내용 |
 |---|---|
-| `docs/R42_E1_E8_SYSTEM_KO.md` | (다음 커밋에서 추가) **시스템 전체 설명.** 프로세스와 통신, E1~E8 단계별 알고리즘, 확정 조건, 실험 한 건을 처음부터 확정까지 따라간 기록 |
+| `docs/R42_E1_E8_SYSTEM_KO.md` | **시스템 전체 설명.** 프로세스와 통신, E1~E8 단계별 알고리즘, 확정 조건, 실험 한 건을 처음부터 확정까지 따라간 기록 |
 | `code/robot_live2/` | 로봇 운영 트리 `~/sci_ws/repairs/livefield2_20261018_151606/` 중 코드·설정·시험·문서. 진입점은 `candidate/live2/console.py` |
 | `code/robot_live2/candidate/live2/` | E2~E8 본체(콘솔·감독, E2 탐색, E3 추적, E5 탐지·정지, E6 판독, E7 정합·층 판정, E8 쌍 판정) |
 | `code/robot_live2/candidate/live2/web_v2/` | 운영 화면(태블릿 브라우저) |
 | `code/robot_live2/candidate/src/` | 관측·판독·팬틸트·의미 위치추정 ROS 2 패키지 |
 | `code/robot_live2/config/e7_semantic_policy.json` | 의미 확정 정책. 없으면 의미 확정이 SHADOW 로만 돈다 |
-| `code/sci_ws_external/` | 로봇 `~/sci_ws/external/` 중 코드. 운영 코드가 이 경로를 직접 읽는다(`floor_id`, `sci_live`, `sci_event`). FAST-LIO 사본 2개 포함(GPL-2.0, 각 폴더의 LICENSE) |
-| `code/robot_live2/candidate/external/` | 위 `external` 의 예전 사본. 운영 중에는 쓰이지 않으며, 비교용으로 남겼다 |
-| `code/home_extra/` | 운영 코드가 홈 폴더에서 읽는 파일. 팬틸트 보정(`pantilt_calib/configs/pantilt_calib_multi_20260928.json`), E2 스위치 파일(`kci_loadtest_20261113/e2_acc.on`, `e2_clean.on`) |
+| `code/robot_live2/candidate/external/` | **E2·E3·E6·E7 이 불러오는 사본**(`sci_live`, `sci_event`). 예: `e2_worker.py:39`, `e34_node.py:21`, `e6_core.py:140` |
+| `code/sci_ws_external/` | 로봇 `~/sci_ws/external/` 의 코드. FAST-LIO 빌드 작업공간(`fastlio_ws`), 일부 연구 모듈이 읽는 `floor_id`, 화면용 지도 경로가 이쪽이다. `sci_live` 는 위 사본과 다섯 파일이 달라 E2 는 이 판으로 돌지 않는다. FAST-LIO 사본 2개 포함(GPL-2.0, 각 폴더의 LICENSE) |
+| `code/home_extra/` | 운영 코드가 로봇 홈 폴더(`~`)에서 읽는 파일. 경로는 로봇 홈 기준 그대로다(아래 표) |
 | `examples/X20261116_182124/` | 현장 실험 기록 1건(정답 5층, 명판 502 → 504). 문서의 예시가 이 기록이다 |
+
+`code/home_extra/` 의 내용:
+
+| 경로 | 내용 |
+|---|---|
+| `sci_ws_student_staging_20261109/tools/plate_site/` | **명판 촬영 도구**(포트 8791, 운영 화면 촬영 카드). 명판 기억, 정지 안내, 팬틸트 조준, 촬영, 명판 위치를 저장소 좌표로 옮기는 기능 |
+| `sci_ws_student_staging_20261109/tools/plate_merge/on_experiment_start.sh` | 실험 시작 훅. 촬영 도구와 FAST-LIO 전용 코어 도구를 띄운다 |
+| `sci_ws_student_staging_20261109/tools/field1112/core_pin.py` | FAST-LIO 본체 스레드를 3번 코어에 고정 |
+| `sci_ws_alt_imu_20261029_204740/{src,scripts,config}` | `body` IMU 방식. Go2 본체 IMU 브리지·출력 어댑터(`src/sci_alt_imu_bridge`), 실행 스크립트(`scripts/body_fastlio_live2.sh`), 보정 파일 |
+| `sci_ws/config/fastlio/` | 운영이 읽는 FAST-LIO 설정·DDS 설정. `candidate/config/fastlio/` 와 같은 내용 |
+| `sci_ws/repairs/livefield2_20261018_151606/runtime/{plate_case1.on, pantilt_envelope.json, student_start_hook}` | 촬영 방식 스위치, 팬틸트 확인 범위, 시작 훅 경로 |
+| `pantilt_calib/configs/pantilt_calib_multi_20260928.json` | 팬틸트 보정 |
+| `kci_loadtest_20261113/e2_acc.on`, `e2_clean.on` | E2 스위치. `e2_acc.on` 은 20 s 창 되풀이, `e2_clean.on` 의 내용 `pose` 는 표본 자세 보정 켜짐. `e2_rank.on` 은 로봇에 없다(꺼짐) |
 
 운영 중 반영된 판은 아래 sha256 앞 12자리로 확인할 수 있다(`code/robot_live2/candidate/live2/`).
 
@@ -51,7 +64,7 @@ Unitree Go2 사족 로봇이 **몇 층의 어디에, 어느 방향으로** 있�
 | SigLIP | `~/sci_ws/models/siglip-base-patch16-224` | Hugging Face `google/siglip-base-patch16-224` 그대로(추가 학습 없음, 문구 3개로 사용) |
 | VLM | `~/sci_ws/models/Qwen3-VL-2B-Instruct-GGUF` | Qwen3-VL-2B-Instruct Q8_0 GGUF, llama.cpp 서버로 실행. llama.cpp 커밋 `318a471a6295e53bfce7ca96ae0cf26071cbdd6e` |
 | OCR | 파이썬 환경 | RapidOCR(PP-OCRv4). `~/sci_ws/models/easyocr` 는 비교 시험용 |
-| ROS 2·FAST-LIO 빌드 | `~/sci_ws/external/sci_live/fastlio_ws` 등 | 소스는 `code/sci_ws_external/` 에 있다. 빌드 산출물은 없다 |
+| ROS 2·FAST-LIO 빌드 | `~/sci_ws/external/fastlio_ws`, `~/sci_ws_alt_imu_20261029_204740/install` | 소스는 `code/sci_ws_external/fastlio_ws`, `code/home_extra/sci_ws_alt_imu_20261029_204740/src` 에 있다. 빌드 산출물은 없다 |
 | 가상환경 | `~/sci_ws/.venv`, `sci_live/venv_gpu` | `code/sci_ws_external/sci_live/setup_venv.sh`, `INSTALL_*.txt` 참고 |
 
 ## 실험 기록 예시 (`examples/X20261116_182124`)

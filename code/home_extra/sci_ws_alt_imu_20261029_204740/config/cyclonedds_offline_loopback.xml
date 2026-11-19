@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Offline/replay ONLY (domain 42): loopback interface, no multicast, unicast discovery to 127.0.0.1.
+     Never used by live sensors or operational nodes. -->
+<CycloneDDS xmlns="https://cdds.io/config">
+  <Domain id="any">
+    <General>
+      <Interfaces><NetworkInterface name="lo"/></Interfaces>
+      <AllowMulticast>false</AllowMulticast>
+      <MaxMessageSize>65500B</MaxMessageSize>
+    </General>
+    <Discovery>
+      <ParticipantIndex>auto</ParticipantIndex>
+      <MaxAutoParticipantIndex>40</MaxAutoParticipantIndex>
+      <Peers><Peer address="127.0.0.1"/></Peers>
+    </Discovery>
+    <Internal><SocketReceiveBufferSize min="8MB"/></Internal>
+  </Domain>
+</CycloneDDS>

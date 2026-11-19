@@ -1,0 +1,18 @@
+# Go2 body IMU <-> Hesai XT16 extrinsic — CANDIDATE from dynamic field recording 2026-10-30 00:46 (NOT live-approved)
+# FAST-LIO convention: p_IMU = R * p_LIDAR + T (R row-major, m); time_offset_lidar_to_imu: FAST-LIO uses imu_stamp - offset
+status: ROTATION_AND_DT_ESTIMATED_T_NOMINAL   # rotation + dt from data; translation NOT observed (URDF nominal)
+live_walk_allowed: false
+imu_frame: go2_body_imu
+lidar_frame: hesai_lidar
+R: [0.001691, -0.999962, -0.008580,
+    0.999996, 0.001709, -0.002137,
+    0.002152, -0.008577, 0.999961]
+T: [0.17057, 0.0, 0.06768]                # URDF nominal — UNOBSERVED by this recording
+time_offset_lidar_to_imu: 0.0022
+evidence:
+  data: "runs/calib_record_20261030_004545 (copy: calib_data/dyn_20261030_004545), session S20261030_004220"
+  rotation: "hand-eye, deskewed scan-to-scan point-to-plane ICP vs bias-corrected body gyro, 493 pairs; rpy_xyz_deg [-0.491, -0.123, 89.903]; block-bootstrap std [0.262, 0.216, 0.544]; 0.516 deg from URDF Rz(90)"
+  yaw_observability: "excitation singular-value ratios s2/s1 0.3613, s3/s1 0.1026; yaw ~7x less constrained than roll/pitch"
+  gravity_check: "initial still: floor normal mapped by R vs body-IMU gravity 0.621 deg (nominal 0.407 deg), floor assumed level"
+  time_offset: "min hand-eye residual tau 0.0022 s; |omega| xcorr 0.0102 s; halves 0.0077 / -0.0002 s"
+  translation: "UNOBSERVED (planar yaw + walking; no lever-arm estimate) — URDF value"

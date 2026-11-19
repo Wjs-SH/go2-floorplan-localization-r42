@@ -1,0 +1,14 @@
+{
+ "pan": [
+  60.0,
+  135.0
+ ],
+ "tilt": [
+  135.0,
+  167.189
+ ],
+ "verified_at": "2026-10-27 23:26:40",
+ "verified_by": "operator on site (observed)",
+ "note": "2026-10-27 23:18-23:26 boot 7a9ccbde, approval B_20261027_231815: operator watched 5-deg sweeps Pan 95.4->135->HOME, 95.4->60->HOME, Tilt 157.2->135->HOME (2nd run; lower tilt = camera up): no interference. Tilt above 167.189 not tested.",
+ "angle_kind": "COMMANDED servo degrees"
+}

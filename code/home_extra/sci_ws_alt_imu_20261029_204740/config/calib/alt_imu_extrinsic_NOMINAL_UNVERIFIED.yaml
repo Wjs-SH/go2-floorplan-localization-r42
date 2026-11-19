@@ -1,0 +1,16 @@
+# Go2 body IMU <-> Hesai XT16 extrinsic — NOMINAL, NOT A CALIBRATION.
+# FAST-LIO convention (laserMapping.cpp:925-927, used at :173/218): p_IMU = R * p_LIDAR + T  (T_I_L; R row-major, metres)
+status: PARTIAL_ROLL_PITCH_ONLY          # NOT_CALIBRATED | PARTIAL_ROLL_PITCH_ONLY | CALIBRATION_VERIFIED
+live_walk_allowed: false
+imu_frame: go2_body_imu                   # URDF link 'imu' (base_link->imu: xyz -0.02557 0 0.04232, rpy 0)
+lidar_frame: hesai_lidar                  # URDF base_link->hesai_lidar: xyz 0.145 0 0.11, rpy 0 0 +90deg (manually entered, unverified)
+R: [0.0, -1.0, 0.0,
+    1.0,  0.0, 0.0,
+    0.0,  0.0, 1.0]                       # Rz(+90deg) from URDF
+T: [0.17057, 0.0, 0.06768]                # hesai - imu in base frame (URDF)
+time_offset_lidar_to_imu: 0.0             # NOT estimated
+evidence:
+  roll_pitch: "static gravity chain 2026-10-29 20:10 (l1_recovery_check bag): Hesai 'up' via L1-IMU+esy calib vs via body-IMU+Rz(90) agree within 1.01 deg"
+  yaw: "UNOBSERVED (needs rotation data with /lidar_points + /lowstate)"
+  translation: "URDF only"
+  time_offset: "UNOBSERVED (needs synchronous LiDAR+IMU motion data)"
